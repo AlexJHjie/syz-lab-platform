@@ -18,6 +18,8 @@ skipped.
 Environment:
   PLATFORM_TOOLCHAIN_MANIFEST  Use another lock manifest.
   PLATFORM_TOOLCHAINS_DIR      Override the installation directory.
+  GITHUB_TOKEN                 Token with Contents read access for private
+                               GitHub release assets (GH_TOKEN also accepted).
 EOF
 }
 
@@ -89,9 +91,9 @@ for key in selected:
     ]
     if any(not isinstance(value, str) for value in values):
         raise SystemExit(f"manifest fields for {key} must be strings")
-    if any("\t" in value or "\n" in value for value in values):
-        raise SystemExit(f"manifest fields for {key} cannot contain tabs or newlines")
-    print("\t".join(values))
+    if any("\x1f" in value or "\n" in value for value in values):
+        raise SystemExit(f"manifest fields for {key} cannot contain separators or newlines")
+    print("\x1f".join(values))
 PY
 )" || die "failed to parse toolchain manifest"
 
@@ -162,7 +164,26 @@ install_toolchain() {
   else
     rm -f -- "${archive}" "${partial}"
     echo "downloading ${key}"
-    curl --fail --location --proto '=https,file' --tlsv1.2 --output "${partial}" "${url}"
+    local curl_args=(
+      --fail
+      --location
+      --proto '=https,file'
+      --proto-redir '=https'
+      --tlsv1.2
+      --output "${partial}"
+    )
+    case "${url}" in
+      https://api.github.com/repos/*/releases/assets/*)
+        local github_token="${GITHUB_TOKEN:-${GH_TOKEN:-}}"
+        [[ -n "${github_token}" ]] ||
+          die "manifest entry ${key} is a private GitHub release asset; set GITHUB_TOKEN or GH_TOKEN with Contents read access"
+        curl_args+=(
+          --header "Accept: application/octet-stream"
+          --header "Authorization: Bearer ${github_token}"
+        )
+        ;;
+    esac
+    curl "${curl_args[@]}" "${url}"
     echo "${expected_sha256}  ${partial}" | sha256sum --check --status ||
       die "SHA256 mismatch for ${key}"
     mv -- "${partial}" "${archive}"
@@ -213,7 +234,7 @@ install_toolchain() {
   echo "installed: ${target}"
 }
 
-while IFS=$'\t' read -r key compiler compiler_version binutils_version url sha256; do
+while IFS=$'\x1f' read -r key compiler compiler_version binutils_version url sha256; do
   install_toolchain "${key}" "${compiler}" "${compiler_version}" \
     "${binutils_version}" "${url}" "${sha256}"
 done <<<"${RECORDS}"

@@ -281,6 +281,7 @@ CLI 退出码：
 | `PLATFORM_ROOTFS_SIZE` | `8G` | 创建 rootfs 时的镜像大小 |
 | `PLATFORM_DEBIAN_SUITE` | `bookworm` | 创建 rootfs 时使用的 Debian 版本 |
 | `PLATFORM_DEBIAN_MIRROR` | `http://deb.debian.org/debian` | debootstrap 软件源 |
+| `GITHUB_TOKEN` | 未设置 | 下载私有 GitHub Release 工具链时使用，令牌仅需仓库 `Contents: read` 权限 |
 
 ## 精确内核工具链
 
@@ -351,6 +352,14 @@ platform/toolchains/<严格版本目录>/
 `gcc-8.0.1/bin/gcc`。脚本仅接受 HTTPS 或本地 `file://` URL，下载后严格校验
 SHA256，并在原子迁移到 `platform/toolchains/` 前再次检查编译器和 binutils
 版本。`syzrun run` 自身仍只检测工具链，不会隐式联网下载。
+
+清单使用私有 GitHub Release Asset API URL 时，安装前需通过环境变量提供只读令牌：
+
+```bash
+GITHUB_TOKEN="$(gh auth token)" ./scripts/setup_toolchains.sh
+```
+
+也可以使用 `GH_TOKEN`。令牌不得写入清单或提交到 Git。
 
 ## 11. 常见问题
 
