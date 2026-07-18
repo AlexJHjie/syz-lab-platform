@@ -6,16 +6,16 @@
       "compiler": "gcc",
       "compiler_version": "8.0.1",
       "binutils_version": "",
-      "url": "",
-      "sha256": ""
+      "url": "https://github.com/AlexJHjie/syz-lab-platform/releases/download/toolchains-v1/gcc-8.0.1.tar.xz",
+      "sha256": "sha256:1f0c10d89d82e0af7117979bc6abf56471777c6a123bb7bb076f297cabd3e488"
     },
     {
       "key": "gcc-10.2.1-binutils-2.35.2",
       "compiler": "gcc",
       "compiler_version": "10.2.1",
       "binutils_version": "2.35.2",
-      "url": "",
-      "sha256": ""
+      "url": "https://github.com/AlexJHjie/syz-lab-platform/releases/download/toolchains-v1/gcc-10.2.1-binutils-2.35.2.tar.xz",
+      "sha256": "sha256:d485ec6587d59336e606cb8cfeeea9fdb90c453c3bbfe3a059fa94e27ff402c4"
     }
   ]
 }
