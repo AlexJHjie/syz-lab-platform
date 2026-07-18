@@ -1,0 +1,21 @@
+{
+  "vulnerabilities": {
+    "0084fd109a7a10011e183a357715c91cff2cacb0": {
+      "build_env": {
+        "KCFLAGS": "-fcf-protection=none"
+      },
+      "make_args": [],
+      "qemu_append": [
+        "systemd.unified_cgroup_hierarchy=0"
+      ],
+      "qemu_args": [],
+      "repro_env": {}
+    },
+    "0518799fc2250353125d212fc510c44adbde73c3": {
+      "rootfs": {
+        "image": "cache/rootfs-firmware/rootfs.img",
+        "ssh_key": "cache/rootfs-firmware/id_rsa"
+      }
+    }
+  }
+}

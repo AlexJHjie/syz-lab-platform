@@ -1,0 +1,2 @@
+[console_scripts]
+syzrun = syzrun.cli:main

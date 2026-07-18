@@ -1,0 +1,21 @@
+{
+  "schema_version": 1,
+  "toolchains": [
+    {
+      "key": "gcc-8.0.1",
+      "compiler": "gcc",
+      "compiler_version": "8.0.1",
+      "binutils_version": "",
+      "url": "",
+      "sha256": ""
+    },
+    {
+      "key": "gcc-10.2.1-binutils-2.35.2",
+      "compiler": "gcc",
+      "compiler_version": "10.2.1",
+      "binutils_version": "2.35.2",
+      "url": "",
+      "sha256": ""
+    }
+  ]
+}

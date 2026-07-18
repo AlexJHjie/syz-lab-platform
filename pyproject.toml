@@ -1,0 +1,24 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "syzrun"
+version = "0.1.0"
+description = "Linux kernel syzbot metadata builder and syz repro runner"
+readme = "README.md"
+requires-python = ">=3.10"
+authors = [
+  { name = "Kernel Benchmark Platform" }
+]
+dependencies = []
+
+[project.scripts]
+syzrun = "syzrun.cli:main"
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+
+[tool.setuptools.packages.find]
+where = ["src"]
+include = ["syzrun*"]
