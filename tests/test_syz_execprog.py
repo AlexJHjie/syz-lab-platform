@@ -44,11 +44,13 @@ class SyzExecprogTests(unittest.TestCase):
                 repro_file=repro,
                 timeout=30,
                 env={"FOO": "bar baz", "ALPHA": "1"},
+                extra_args=["-disable=cgroups"],
             )
 
         self.assertIn("timeout 30s env ALPHA=1 'FOO=bar baz' /root/syz-execprog", remote_command)
         self.assertIn("-threaded=0", remote_command)
         self.assertIn("-procs=2", remote_command)
+        self.assertIn("-disable=cgroups", remote_command)
         self.assertEqual(vm.commands[-1], remote_command)
 
 

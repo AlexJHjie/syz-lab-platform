@@ -7,7 +7,7 @@ from unittest import mock
 from syzrun.builder.kernel import KernelArtifacts
 from syzrun.builder.syzkaller import SyzkallerArtifacts
 from syzrun.repro.symbolizer import _symbolizer_supports_arch, extract_crash_segment, symbolize_crash
-from syzrun.repro.verdict import Verdict
+from syzrun.repro.verdict import CrashFingerprint
 
 
 class SymbolizerTests(unittest.TestCase):
@@ -26,14 +26,14 @@ unreferenced object 0xffff888010b9c300 (size 240):
 BUG: memory leak
 unreferenced object 0xffff888049e80c00 (size 64):
 """
-        verdict = Verdict("reproduced", "memory leak in __build_skb", "matched", "repro.log")
+        target = CrashFingerprint("MEMORY_LEAK", None, ("__build_skb",))
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
             source = root / "repro.log"
             output = root / "segment.log"
             source.write_text(text, encoding="utf-8")
 
-            self.assertTrue(extract_crash_segment(source, output, verdict))
+            self.assertTrue(extract_crash_segment(source, output, target))
             segment = output.read_text(encoding="utf-8")
 
         self.assertIn("__build_skb+0x21", segment)
@@ -49,21 +49,21 @@ unreferenced object 0xffff888049e80c00 (size 64):
 [   38.367045][ T6935] ==================================================================
 [   38.400037][ T6954] BUG: KASAN: slab-out-of-bounds in decrypt_internal+0x153b/0x1cd0
 """
-        verdict = Verdict("reproduced", "KASAN in decrypt_internal", "matched")
+        target = CrashFingerprint("KASAN", "slab-out-of-bounds", ("decrypt_internal",))
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
             source = root / "qemu.log"
             output = root / "segment.log"
             source.write_text(text, encoding="utf-8")
 
-            self.assertTrue(extract_crash_segment(source, output, verdict))
+            self.assertTrue(extract_crash_segment(source, output, target))
             segment = output.read_text(encoding="utf-8")
 
         self.assertIn("T6935", segment)
         self.assertNotIn("T6954", segment)
 
     def test_symbolizes_with_matching_syzkaller_binary(self) -> None:
-        verdict = Verdict("reproduced", "memory leak in __build_skb", "matched", "repro.log")
+        target = CrashFingerprint("MEMORY_LEAK", None, ("__build_skb",))
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
             kernel_tree = root / "linux"
@@ -115,7 +115,8 @@ unreferenced object 0xffff888049e80c00 (size 64):
                     syzkaller=syzkaller,
                     architecture="amd64",
                     source_log=source,
-                    verdict=verdict,
+                    target=target,
+                    report_text=source.read_text(encoding="utf-8"),
                     output_path=output,
                 )
 
@@ -132,7 +133,7 @@ unreferenced object 0xffff888049e80c00 (size 64):
             self.assertFalse(output.with_suffix(".symbolized.tmp").exists())
 
     def test_symbolizer_failure_does_not_leave_crash_log(self) -> None:
-        verdict = Verdict("reproduced", "WARNING in target", "matched")
+        target = CrashFingerprint("WARNING", None, ("target",))
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
             kernel_tree = root / "linux"
@@ -160,7 +161,8 @@ unreferenced object 0xffff888049e80c00 (size 64):
                         syzkaller=syzkaller,
                         architecture="amd64",
                         source_log=source,
-                        verdict=verdict,
+                        target=target,
+                        report_text=source.read_text(encoding="utf-8"),
                         output_path=output,
                     )
 
@@ -198,7 +200,8 @@ unreferenced object 0xffff888049e80c00 (size 64):
                     syzkaller=syzkaller,
                     architecture="amd64",
                     source_log=source,
-                    verdict=Verdict("reproduced", "WARNING in target", "matched"),
+                    target=CrashFingerprint("WARNING", None, ("target",)),
+                    report_text=source.read_text(encoding="utf-8"),
                     output_path=root / "crash.log",
                 )
 

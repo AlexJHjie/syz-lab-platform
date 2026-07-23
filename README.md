@@ -232,7 +232,7 @@ work/
       report.md
 ```
 
-每个 `attempt-*` 目录可能包含 `qemu.log`、`ssh.log`、`scp.log` 和 `repro.log`。当目标漏洞被成功复现时，平台使用对应 syzkaller commit 构建的 `syz-symbolize` 和本次构建的 `vmlinux` 生成 `crash.log`，其中只保留目标 crash 报告及其源码行号和内联调用信息。符号化失败时会记录 warning 且不生成 `crash.log`，但不会改变复现结论；平台不会回退到其他符号化方法。`crashed_other`、`not_reproduced` 和 `failed` 不生成该文件。每次重新运行同一漏洞时，运行日志会被清空，但共享下载和 Git mirror 缓存会被保留。
+每个 `attempt-*` 目录可能包含 `qemu.log`、`ssh.log`、`scp.log` 和 `repro.log`。当判定为 `reproduced` 或 `crashed_other` 时，平台使用对应 syzkaller commit 构建的 `syz-symbolize` 和本次构建的 `vmlinux` 生成 `crash.log`，其中只保留本次实际捕获的 crash 报告及其源码行号和内联调用信息。符号化失败时会记录 warning 且不生成 `crash.log`，但不会改变复现结论；平台不会回退到其他符号化方法。`not_reproduced` 和 `failed` 不生成该文件。每次重新运行同一漏洞时，运行日志会被清空，但共享下载和 Git mirror 缓存会被保留。
 
 
 查看结果：
@@ -256,7 +256,7 @@ less work/runs/<vuln-id>/logs/attempt-01/repro.log
 
 报告中的 verdict 可能是：
 
-- `reproduced`：匹配到目标崩溃标题，或匹配到崩溃类型和函数。
+- `reproduced`：独立崩溃报告的类型、KASAN/KMSAN 子类型和目标函数 fingerprint 匹配。
 - `crashed_other`：内核发生崩溃，但未匹配目标漏洞。
 - `not_reproduced`：所有尝试均未发现目标崩溃。
 - `failed`：所有复现尝试均因基础设施或运行错误失败。
@@ -457,6 +457,9 @@ python -m unittest discover -s tests
 - `qemu_append`: 追加到 QEMU `-append` 的 Linux kernel command line。
 - `qemu_args`: 追加到 QEMU 命令末尾的参数。
 - `repro_env`: 预留给 reproducer 运行环境变量。
+- `execprog_args`: 仅为该漏洞追加 `syz-execprog` 命令行参数。例如旧内核因
+  cgroup 初始化提前崩溃时可设置 `["-disable=cgroups"]`。未配置时不会改变
+  现有复现命令。
 - `rootfs`: 为当前漏洞选择专用 guest rootfs；`image` 和 `ssh_key` 必填，
   `ssh_user` 可选并默认为 `root`。相对路径以 `--work-dir` 为基准。
 

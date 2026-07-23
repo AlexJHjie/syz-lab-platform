@@ -40,6 +40,7 @@ class RuntimeProfileTests(unittest.TestCase):
         self.assertEqual(profile.qemu_append, [])
         self.assertEqual(profile.qemu_args, [])
         self.assertEqual(profile.repro_env, {})
+        self.assertEqual(profile.execprog_args, [])
         self.assertIsNone(profile.rootfs)
 
     def test_unmatched_vulnerability_returns_empty_profile(self) -> None:
@@ -64,6 +65,7 @@ class RuntimeProfileTests(unittest.TestCase):
                       "qemu_append": ["systemd.unified_cgroup_hierarchy=0"],
                       "qemu_args": ["-no-reboot"],
                       "repro_env": {"FOO": "bar"},
+                      "execprog_args": ["-disable=cgroups"],
                       "rootfs": {
                         "image": "cache/rootfs-firmware/rootfs.img",
                         "ssh_key": "cache/rootfs-firmware/id_rsa",
@@ -83,6 +85,7 @@ class RuntimeProfileTests(unittest.TestCase):
         self.assertEqual(profile.qemu_append, ["systemd.unified_cgroup_hierarchy=0"])
         self.assertEqual(profile.qemu_args, ["-no-reboot"])
         self.assertEqual(profile.repro_env, {"FOO": "bar"})
+        self.assertEqual(profile.execprog_args, ["-disable=cgroups"])
         self.assertIsNotNone(profile.rootfs)
         self.assertEqual(profile.rootfs.image, "cache/rootfs-firmware/rootfs.img")
         self.assertEqual(profile.rootfs.ssh_key, "cache/rootfs-firmware/id_rsa")
@@ -105,6 +108,17 @@ class RuntimeProfileTests(unittest.TestCase):
             )
 
             with self.assertRaisesRegex(RuntimeProfileError, "rootfs.ssh_key"):
+                load_runtime_profile(make_vuln("abc123"), path)
+
+    def test_rejects_invalid_execprog_args(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "profiles.json"
+            path.write_text(
+                '{"vulnerabilities": {"abc123": {"execprog_args": "-disable=cgroups"}}}',
+                encoding="utf-8",
+            )
+
+            with self.assertRaisesRegex(RuntimeProfileError, "execprog_args"):
                 load_runtime_profile(make_vuln("abc123"), path)
 
 

@@ -28,6 +28,7 @@ class RuntimeProfile:
     qemu_append: list[str] = field(default_factory=list)
     qemu_args: list[str] = field(default_factory=list)
     repro_env: dict[str, str] = field(default_factory=dict)
+    execprog_args: list[str] = field(default_factory=list)
     rootfs: RootfsProfile | None = None
 
     @classmethod
@@ -63,6 +64,7 @@ def load_runtime_profile(vuln: Vulnerability, config_path: Path = DEFAULT_RUNTIM
         qemu_append=_string_list(raw_profile, "qemu_append"),
         qemu_args=_string_list(raw_profile, "qemu_args"),
         repro_env=_string_map(raw_profile, "repro_env"),
+        execprog_args=_string_list(raw_profile, "execprog_args"),
         rootfs=_rootfs_profile(raw_profile),
     )
 

@@ -74,6 +74,7 @@ def start_syz_repro(
     repro_file: Path,
     timeout: int,
     env: dict[str, str] | None = None,
+    extra_args: list[str] | None = None,
 ) -> tuple[subprocess.Popen[str], str]:
     vm.scp_to(syzkaller.execprog, "/root/syz-execprog")
     vm.scp_to(syzkaller.executor, "/root/syz-executor")
@@ -81,6 +82,7 @@ def start_syz_repro(
     vm.ssh("chmod +x /root/syz-execprog /root/syz-executor", timeout=60, log_path=vm.logs_dir / "repro.log")
 
     flags = build_execprog_flags(repro_file)
+    flags.extend(extra_args or [])
     command_parts = ["timeout", f"{timeout}s"]
     if env:
         command_parts.append("env")

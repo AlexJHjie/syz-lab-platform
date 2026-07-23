@@ -4,18 +4,30 @@
       "build_env": {
         "KCFLAGS": "-fcf-protection=none"
       },
-      "make_args": [],
       "qemu_append": [
         "systemd.unified_cgroup_hierarchy=0"
-      ],
-      "qemu_args": [],
-      "repro_env": {}
+      ]
     },
     "0518799fc2250353125d212fc510c44adbde73c3": {
       "rootfs": {
         "image": "cache/rootfs-firmware/rootfs.img",
         "ssh_key": "cache/rootfs-firmware/id_rsa"
       }
+    },
+    "7a56fd91f3db3a79c974b34e1aac3879898d6f29": {
+      "qemu_append": [
+        "systemd.unified_cgroup_hierarchy=0"
+      ]
+    },
+    "d5cd7bc74de1e50a5139d45189395427cc5c3f63": {
+      "execprog_args": [
+        "-disable=cgroups"
+      ]
+    },
+    "2db2545ff94291fabe4a5dd4ee182db44ef35d4b": {
+      "qemu_append": [
+        "panic_on_warn=0"
+      ]
     }
   }
 }

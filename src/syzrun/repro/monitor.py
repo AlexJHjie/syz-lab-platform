@@ -1,9 +1,9 @@
 from __future__ import annotations
 
+import codecs
 import logging
 import time
-from collections import deque
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 
 from ..builder.kernel import KernelArtifacts
@@ -16,7 +16,7 @@ from .qemu import QemuVM
 from .rootfs import RootfsLocator
 from .symbolizer import symbolize_crash
 from .syz_execprog import SyzRunResult, start_syz_repro, stop_syz_repro
-from .verdict import Verdict, classify, classify_text, has_crash
+from .verdict import CrashFingerprint, StreamMatcher, Verdict, classify, split_reports, target_fingerprint
 
 ATTEMPT_COUNT = 3
 REPRO_TIMEOUT = 2 * 60
@@ -29,26 +29,21 @@ CRASH_DRAIN_END_MARKERS = (
     "---[ end trace",
     "Rebooting in",
 )
-CRASH_SCAN_WINDOW_LINES = 120
+NORMAL_REPRO_EXIT_CODES = frozenset({0, 124})
 
 
 class _IncrementalLogScanner:
-    def __init__(self, path: Path, *, start_offset: int, window_lines: int = CRASH_SCAN_WINDOW_LINES) -> None:
-        if window_lines <= 0:
-            raise ValueError("window_lines must be positive")
+    def __init__(self, path: Path, *, start_offset: int) -> None:
         self.path = path
         self.offset = start_offset
-        self.window_lines = window_lines
-        self._lines: deque[str] = deque(maxlen=window_lines)
-        self._partial_line = ""
+        self.decoder = codecs.getincrementaldecoder("utf-8")("replace")
 
-    def read_window(self) -> str | None:
+    def read_text(self) -> str | None:
         if not self.path.exists():
             return None
         if self.path.stat().st_size < self.offset:
             self.offset = 0
-            self._lines.clear()
-            self._partial_line = ""
+            self.decoder.reset()
 
         with self.path.open("rb") as stream:
             stream.seek(self.offset)
@@ -56,19 +51,7 @@ class _IncrementalLogScanner:
             self.offset = stream.tell()
         if not chunk:
             return None
-
-        text = self._partial_line + chunk.decode("utf-8", errors="replace")
-        lines = text.splitlines(keepends=True)
-        self._partial_line = ""
-        if lines and not lines[-1].endswith(("\n", "\r")):
-            self._partial_line = lines.pop()
-        self._lines.extend(lines)
-
-        history = list(self._lines)
-        if self._partial_line:
-            history = history[-(self.window_lines - 1) :] if self.window_lines > 1 else []
-            history.append(self._partial_line)
-        return "".join(history)
+        return self.decoder.decode(chunk)
 
 
 @dataclass(frozen=True)
@@ -82,6 +65,7 @@ class AttemptResult:
     syz: SyzRunResult | None
     error: str | None = None
     source_log: str | None = None
+    report: str | None = field(default=None, repr=False, compare=False)
 
 
 @dataclass(frozen=True)
@@ -108,6 +92,7 @@ class ReproductionRunner:
         self.kernel = kernel
         self.syzkaller = syzkaller
         self.fetched = fetched
+        self.target: CrashFingerprint = target_fingerprint(fetched.crash_report)
         self.runtime_profile = runtime_profile or RuntimeProfile.empty()
         self.timeout = timeout
 
@@ -133,7 +118,8 @@ class ReproductionRunner:
                     error=str(exc),
                     source_log=None,
                 )
-            if result.status == "reproduced":
+            symbolization_target = _symbolization_target(result, self.target)
+            if symbolization_target is not None:
                 try:
                     source_log = result.source_log or "qemu.log"
                     crash_log = symbolize_crash(
@@ -141,18 +127,19 @@ class ReproductionRunner:
                         syzkaller=self.syzkaller,
                         architecture=self.vuln.crash.architecture,
                         source_log=logs_dir / source_log,
-                        verdict=Verdict(result.status, result.matched, result.reason, source_log),
+                        target=symbolization_target,
+                        report_text=result.report,
                         output_path=logs_dir / "crash.log",
                     )
                     if crash_log:
                         logging.info("symbolized crash log: %s", crash_log)
                     else:
-                        logging.warning("could not locate reproduced crash in %s", logs_dir / source_log)
+                        logging.warning("could not locate %s crash in %s", result.status, logs_dir / source_log)
                 except Exception as exc:
-                    logging.warning("failed to symbolize reproduced crash: %s", exc)
+                    logging.warning("failed to symbolize %s crash: %s", result.status, exc)
             attempts.append(result)
             logging.info("attempt %d finished: %s (%s)", number, result.status, result.reason)
-            if result.status == "reproduced":
+            if _should_stop_attempts(result.status):
                 break
 
         verdict = _summarize_attempts(attempts)
@@ -178,44 +165,58 @@ class ReproductionRunner:
             repro_offset = repro_log.stat().st_size if repro_log.exists() else 0
             qemu_scanner = _IncrementalLogScanner(vm.qemu_log, start_offset=qemu_offset)
             repro_scanner = _IncrementalLogScanner(repro_log, start_offset=repro_offset)
+            qemu_matcher = StreamMatcher(self.target, "qemu.log")
+            repro_matcher = StreamMatcher(self.target, "repro.log")
             process, remote_command = start_syz_repro(
                 vm=vm,
                 syzkaller=self.syzkaller,
                 repro_file=self.fetched.syz_reproducer,
                 timeout=REPRO_TIMEOUT,
                 env=self.runtime_profile.repro_env,
+                extra_args=self.runtime_profile.execprog_args,
             )
             deadline = time.monotonic() + REPRO_TIMEOUT
 
             while time.monotonic() < deadline:
-                serial_window = qemu_scanner.read_window()
-                if serial_window is not None and has_crash(serial_window):
-                    verdict = classify_text(self.vuln, serial_window, source_log="qemu.log")
-                    exit_code = stop_syz_repro(process)
-                    _drain_qemu_log_after_crash(vm.qemu_log, start_offset=qemu_offset)
-                    return _attempt_result(number, verdict, started, logs_dir, exit_code, remote_command)
+                serial_text = qemu_scanner.read_text()
+                if serial_text is not None:
+                    verdict = qemu_matcher.feed(serial_text)
+                    if verdict.status == "reproduced" or (
+                        verdict.status == "crashed_other" and qemu_matcher.terminal
+                    ):
+                        exit_code = stop_syz_repro(process)
+                        _drain_qemu_log_after_crash(vm.qemu_log, start_offset=qemu_offset)
+                        verdict = classify(
+                            self.target, logs_dir, {"qemu.log": qemu_offset, "repro.log": repro_offset}
+                        )
+                        return _attempt_result(number, verdict, started, logs_dir, exit_code, remote_command)
 
-                repro_window = repro_scanner.read_window()
-                if repro_window is not None and has_crash(repro_window):
-                    verdict = classify_text(self.vuln, repro_window, source_log="repro.log")
+                repro_text = repro_scanner.read_text()
+                if repro_text is not None:
+                    verdict = repro_matcher.feed(repro_text)
                     # A report can be observed while its stack is still being written.
                     # Stop early only after the complete target signature is available.
                     if verdict.status == "reproduced":
                         exit_code = stop_syz_repro(process)
+                        verdict = classify(
+                            self.target, logs_dir, {"qemu.log": qemu_offset, "repro.log": repro_offset}
+                        )
                         return _attempt_result(number, verdict, started, logs_dir, exit_code, remote_command)
 
                 returncode = process.poll()
                 if returncode is not None:
-                    verdict = classify(self.vuln, logs_dir)
+                    verdict = classify(self.target, logs_dir, {"qemu.log": qemu_offset, "repro.log": repro_offset})
+                    verdict = _verdict_after_repro_exit(verdict, returncode)
                     return _attempt_result(number, verdict, started, logs_dir, returncode, remote_command)
 
                 if vm.process and vm.process.poll() is not None:
-                    verdict = classify(self.vuln, logs_dir)
+                    verdict = classify(self.target, logs_dir, {"qemu.log": qemu_offset, "repro.log": repro_offset})
+                    verdict = _verdict_after_vm_exit(verdict)
                     return _attempt_result(number, verdict, started, logs_dir, process.poll(), remote_command)
                 time.sleep(MONITOR_INTERVAL)
 
             exit_code = stop_syz_repro(process)
-            verdict = classify(self.vuln, logs_dir)
+            verdict = classify(self.target, logs_dir, {"qemu.log": qemu_offset, "repro.log": repro_offset})
             return _attempt_result(number, verdict, started, logs_dir, exit_code, remote_command)
         finally:
             if process is not None and process.poll() is None:
@@ -226,9 +227,9 @@ class ReproductionRunner:
 def _read_from(path: Path, offset: int) -> str:
     if not path.exists():
         return ""
-    with path.open("r", encoding="utf-8", errors="replace") as stream:
+    with path.open("rb") as stream:
         stream.seek(offset)
-        return stream.read()
+        return stream.read().decode(errors="replace")
 
 
 def _drain_qemu_log_after_crash(
@@ -246,6 +247,8 @@ def _drain_qemu_log_after_crash(
     deadline = time.monotonic() + max_wait
     idle_since = time.monotonic()
     marker_seen_at: float | None = None
+    marker_offset = start_offset
+    marker_tail = ""
     last_size = -1
 
     while True:
@@ -256,8 +259,10 @@ def _drain_qemu_log_after_crash(
                 last_size = current_size
                 idle_since = now
 
-            if current_size > start_offset:
-                text = _read_from(path, start_offset)
+            if current_size > marker_offset:
+                text = marker_tail + _read_from(path, marker_offset)
+                marker_offset = current_size
+                marker_tail = text[-max(map(len, end_markers)) :]
                 if marker_seen_at is None and any(marker in text for marker in end_markers):
                     marker_seen_at = now
 
@@ -293,7 +298,44 @@ def _attempt_result(
         logs_dir=logs_dir,
         syz=SyzRunResult(exit_code=exit_code, remote_command=remote_command),
         source_log=verdict.source_log,
+        report=verdict.report,
     )
+
+
+def _verdict_after_repro_exit(verdict: Verdict, exit_code: int) -> Verdict:
+    """Preserve crash verdicts, but reject an otherwise unexplained repro failure."""
+
+    if verdict.status != "not_reproduced" or exit_code in NORMAL_REPRO_EXIT_CODES:
+        return verdict
+    return Verdict(
+        "failed",
+        None,
+        f"syz repro exited unexpectedly with code {exit_code}",
+        verdict.source_log,
+    )
+
+
+def _verdict_after_vm_exit(verdict: Verdict) -> Verdict:
+    """An early VM exit without a kernel crash is an infrastructure failure."""
+
+    if verdict.status != "not_reproduced":
+        return verdict
+    return Verdict("failed", None, "VM exited unexpectedly during reproduction", verdict.source_log)
+
+
+def _should_stop_attempts(status: str) -> bool:
+    return status in {"reproduced", "failed"}
+
+
+def _symbolization_target(
+    result: AttemptResult, target: CrashFingerprint
+) -> CrashFingerprint | None:
+    if result.status == "reproduced":
+        return target
+    if result.status != "crashed_other" or result.report is None:
+        return None
+    reports = split_reports(result.report)
+    return reports[0].fingerprint if reports else None
 
 
 def _summarize_attempts(attempts: list[AttemptResult]) -> Verdict:
