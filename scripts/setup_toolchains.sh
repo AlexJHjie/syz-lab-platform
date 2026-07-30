@@ -99,6 +99,20 @@ PY
 
 [[ -n "${RECORDS}" ]] || die "no toolchains are configured in ${MANIFEST}"
 
+compiler_version() {
+  local executable="$1"
+  local version
+  version="$("${executable}" -dumpfullversion 2>/dev/null || true)"
+  if [[ "${version}" =~ ^[0-9]+\.[0-9]+(\.[0-9]+)?$ ]]; then
+    echo "${version}"
+    return
+  fi
+  "${executable}" --version 2>/dev/null |
+    head -n 1 |
+    grep -oE '[0-9]+\.[0-9]+(\.[0-9]+)?' |
+    head -n 1 || true
+}
+
 install_toolchain() {
   local key="$1"
   local compiler="$2"
@@ -114,25 +128,25 @@ install_toolchain() {
 
   if [[ -x "${compiler_path}" ]]; then
     local installed_compiler_version
-    installed_compiler_version="$("${compiler_path}" -dumpfullversion 2>/dev/null || true)"
-    if [[ "${installed_compiler_version}" == "${compiler_version}" ]]; then
-      if [[ -z "${binutils_version}" ]]; then
-        echo "already installed: ${key}"
-        return
-      fi
-      local installed_binutils_version
-      installed_binutils_version="$(
-        "${target}/bin/ld" --version 2>/dev/null |
-          head -n 1 |
-          grep -oE '[0-9]+\.[0-9]+(\.[0-9]+)?' |
-          head -n 1 || true
-      )"
-      if [[ "${installed_binutils_version}" == "${binutils_version}" ]]; then
-        echo "already installed: ${key}"
-        return
-      fi
+    installed_compiler_version="$(compiler_version "${compiler_path}")"
+    [[ "${installed_compiler_version}" == "${compiler_version}" ]] ||
+      die "existing directory has a compiler version mismatch: ${target}; expected ${compiler_version}, got ${installed_compiler_version:-unknown}"
+    if [[ -z "${binutils_version}" ]]; then
+      echo "already installed: ${key}"
+      return
     fi
-    die "existing directory has a version mismatch: ${target}; move or remove it before reinstalling"
+    local installed_binutils_version
+    installed_binutils_version="$(
+      "${target}/bin/ld" --version 2>/dev/null |
+        head -n 1 |
+        grep -oE '[0-9]+\.[0-9]+(\.[0-9]+)?' |
+        head -n 1 || true
+    )"
+    if [[ "${installed_binutils_version}" == "${binutils_version}" ]]; then
+      echo "already installed: ${key}"
+      return
+    fi
+    die "existing directory has a binutils version mismatch: ${target}; move or remove it before reinstalling"
   fi
   [[ ! -e "${target}" ]] ||
     die "existing incomplete toolchain directory: ${target}; move or remove it before reinstalling"
@@ -207,7 +221,7 @@ install_toolchain() {
   [[ -x "${extracted}/bin/${compiler}" ]] ||
     die "archive does not contain executable bin/${compiler}: ${archive}"
   local extracted_compiler_version
-  extracted_compiler_version="$("${extracted}/bin/${compiler}" -dumpfullversion 2>/dev/null || true)"
+  extracted_compiler_version="$(compiler_version "${extracted}/bin/${compiler}")"
   [[ "${extracted_compiler_version}" == "${compiler_version}" ]] ||
     die "compiler version mismatch in archive: expected ${compiler_version}, got ${extracted_compiler_version:-unknown}"
 

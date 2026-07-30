@@ -1,0 +1,17 @@
+name: platform
+
+channels:
+  - conda-forge
+
+dependencies:
+  - "python=3.10.*=*_cpython"
+  - pip
+  - curl
+  - git
+  - go
+  - openssh
+  - patch
+  - ripgrep
+  - xz
+  - pip:
+      - -e .

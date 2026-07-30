@@ -2,10 +2,19 @@ from pathlib import Path
 import tempfile
 import unittest
 
-from syzrun.builder.syzkaller import _make_targets, _select_make_targets
+from syzrun.builder.syzkaller import (
+    SYSTEM_CC,
+    SYSTEM_CXX,
+    _make_targets,
+    _select_make_targets,
+)
 
 
 class SyzkallerBuilderTests(unittest.TestCase):
+    def test_uses_system_compilers_for_cgo(self) -> None:
+        self.assertEqual(SYSTEM_CC, "/usr/bin/gcc")
+        self.assertEqual(SYSTEM_CXX, "/usr/bin/g++")
+
     def test_detects_modern_tools_and_symbolizer_target(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             makefile = Path(tmp) / "Makefile"

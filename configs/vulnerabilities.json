@@ -28,6 +28,11 @@
       "qemu_append": [
         "panic_on_warn=0"
       ]
+    },
+    "05d0def6cba37ae08ca4138a8e49d01191e87b71": {
+      "execprog_args": [
+        "-disable=cgroups"
+      ]      
     }
   }
 }

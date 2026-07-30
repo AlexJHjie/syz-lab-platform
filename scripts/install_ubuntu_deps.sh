@@ -7,20 +7,13 @@ sudo apt-get install -y \
   bison \
   build-essential \
   ca-certificates \
-  curl \
   debootstrap \
   dwarves \
   e2fsprogs \
   flex \
-  git \
-  golang-go \
   libelf-dev \
   libssl-dev \
-  openssh-client \
-  patch \
-  python3 \
   qemu-system-x86 \
-  util-linux \
-  xz-utils
+  util-linux
 
 echo "Ubuntu dependencies installed."

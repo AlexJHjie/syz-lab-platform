@@ -13,6 +13,8 @@ from ..utils.git import ensure_mirror_commit, ensure_worktree_commit
 from .toolchain import target_from_arch
 
 DEFAULT_SYZKALLER_REPO = "https://github.com/google/syzkaller.git"
+SYSTEM_CC = "/usr/bin/gcc"
+SYSTEM_CXX = "/usr/bin/g++"
 
 
 @dataclass(frozen=True)
@@ -73,6 +75,8 @@ class SyzkallerBuilder:
     def _make_tools(self) -> tuple[Path, dict[str, str]]:
         build_tree = self.layout.syzkaller_tree
         env = {
+            "CC": SYSTEM_CC,
+            "CXX": SYSTEM_CXX,
             "TARGETOS": "linux",
             "TARGETARCH": self.target.syzkaller_arch,
         }

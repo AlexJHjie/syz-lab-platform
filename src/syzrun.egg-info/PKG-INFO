@@ -22,7 +22,7 @@ Description-Content-Type: text/markdown
 
 - Ubuntu Linux
 - Python 3.10 或更高版本
-- Conda 环境：`kRepair`
+- Conda 环境：`platform`
 - QEMU/KVM
 - Git、Go、GCC/Clang 和 Linux 内核编译依赖
 - 建议至少预留 30 GB 磁盘空间
@@ -42,14 +42,15 @@ chmod +x scripts/*.sh examples/*.sh
 ./scripts/install_ubuntu_deps.sh
 ```
 
-脚本会通过 `apt` 安装 QEMU、Git、Go、编译器、debootstrap 和内核构建依赖，需要 `sudo` 权限。
+脚本会通过 `apt` 安装 QEMU、Git、Go、debootstrap、rootfs 工具和内核构建依赖，需要
+`sudo` 权限。漏洞要求的精确版本编译器不由该脚本安装，需按“精确内核工具链”一节准备。
 
 ## 2. 配置 Conda 环境
 
-激活已有的 `kRepair` 环境：
+激活已有的 `platform` 环境：
 
 ```bash
-conda activate kRepair
+conda activate platform
 ```
 
 确认 Python 版本：
@@ -61,11 +62,11 @@ python --version
 如果环境尚未创建，可执行：
 
 ```bash
-conda create -n kRepair python=3.11 pip -y
-conda activate kRepair
+conda env create -f environment.yml
+conda activate platform
 ```
 
-在项目根目录以可编辑模式安装：
+`environment.yml` 会在项目根目录以可编辑模式安装 `syzrun`。如果需要手动重新安装：
 
 ```bash
 python -m pip install -e .
@@ -99,6 +100,24 @@ work/cache/rootfs/id_rsa.pub
 
 已有 rootfs 时不需要重复创建。脚本检测到 `rootfs.img` 后会直接复用。
 
+需要 Atheros AR9271 固件的漏洞使用独立镜像：
+
+```bash
+./scripts/create_rootfs-firmware.sh
+```
+
+完成后应生成：
+
+```text
+work/cache/rootfs-firmware/rootfs.img
+work/cache/rootfs-firmware/id_rsa
+work/cache/rootfs-firmware/id_rsa.pub
+```
+
+脚本安装 Debian `firmware-ath9k-htc` 和 `firmware-atheros` 包，并确认镜像内存在
+`/lib/firmware/ath9k_htc/htc_9271-1.4.0.fw`。该镜像由
+`configs/vulnerabilities.json` 中的漏洞专用 `rootfs` 配置选择。
+
 ## 4. 配置 KVM
 
 检查 KVM：
@@ -113,7 +132,7 @@ ls -l /dev/kvm
 sudo usermod -aG kvm "$USER"
 ```
 
-随后注销并重新登录，再执行 `conda activate kRepair`。没有 KVM 时可以禁用硬件加速，但复现速度会明显降低：
+随后注销并重新登录，再执行 `conda activate platform`。没有 KVM 时可以禁用硬件加速，但复现速度会明显降低：
 
 ```bash
 export PLATFORM_DISABLE_KVM=1
@@ -223,6 +242,7 @@ work/
 
 每个 `attempt-*` 目录可能包含 `qemu.log`、`ssh.log`、`scp.log` 和 `repro.log`。当判定为 `reproduced` 或 `crashed_other` 时，平台使用对应 syzkaller commit 构建的 `syz-symbolize` 和本次构建的 `vmlinux` 生成 `crash.log`，其中只保留本次实际捕获的 crash 报告及其源码行号和内联调用信息。符号化失败时会记录 warning 且不生成 `crash.log`，但不会改变复现结论；平台不会回退到其他符号化方法。`not_reproduced` 和 `failed` 不生成该文件。每次重新运行同一漏洞时，运行日志会被清空，但共享下载和 Git mirror 缓存会被保留。
 
+
 查看结果：
 
 ```bash
@@ -262,9 +282,6 @@ CLI 退出码：
 | `PLATFORM_SYZBOT_BASE_URL` | `https://syzkaller.appspot.com` | syzbot 相对链接的基础地址 |
 | `PLATFORM_LINUX_REPO` | torvalds/linux | Linux mirror 仓库地址 |
 | `PLATFORM_SYZKALLER_REPO` | google/syzkaller | syzkaller mirror 仓库地址 |
-| `PLATFORM_ROOTFS` | `<work-dir>/cache/rootfs/rootfs.img` | 自定义 rootfs 镜像 |
-| `PLATFORM_SSH_KEY` | `<work-dir>/cache/rootfs/id_rsa` | rootfs SSH 私钥 |
-| `PLATFORM_SSH_USER` | `root` | rootfs SSH 用户 |
 | `PLATFORM_QEMU_MEM` | `2048` | QEMU 内存，单位 MB |
 | `PLATFORM_QEMU_SMP` | `2` | QEMU vCPU 数量 |
 | `PLATFORM_DISABLE_KVM` | 未设置 | 设为 `1` 时禁用 KVM |
@@ -272,16 +289,88 @@ CLI 退出码：
 | `PLATFORM_ROOTFS_SIZE` | `8G` | 创建 rootfs 时的镜像大小 |
 | `PLATFORM_DEBIAN_SUITE` | `bookworm` | 创建 rootfs 时使用的 Debian 版本 |
 | `PLATFORM_DEBIAN_MIRROR` | `http://deb.debian.org/debian` | debootstrap 软件源 |
+| `GITHUB_TOKEN` | 未设置 | 下载私有 GitHub Release 工具链时使用，令牌仅需仓库 `Contents: read` 权限 |
 
-使用已有 rootfs 的示例：
+## 精确内核工具链
+
+内核编译前，`syzrun` 会解析 metadata 的 `compiler-description`，并在项目根目录的
+`platform/toolchains/` 查找完整版本匹配的 GCC/Clang 和 binutils。该目录是项目级
+持久资源，不受 `--work-dir` 影响，也不会随临时工作区清理。
+
+工具链通过 make 命令行变量（如 `CC=...`、`LD=...`）传入，避免被 Linux
+Makefile 的默认值覆盖。运行 `syz-symbolize` 时也会把该工具链目录置于 `PATH`
+最前面，使其使用配套的 `addr2line`。工具链目录不存在或实际版本不匹配时会直接失败，并提示用户将
+工具链手动下载到指定目录；平台不会自动下载，也不会静默回退到系统编译器。
+
+目录名由严格版本自动确定，例如：
+
+```text
+platform/toolchains/gcc-8.0.1/
+platform/toolchains/gcc-10.2.1-binutils-2.35.2/
+```
+
+工具链统一使用以下目录结构：
+
+```text
+platform/toolchains/<严格版本目录>/
+├── bin/
+│   ├── gcc            # Clang 工具链则为 clang
+│   ├── ld
+│   ├── as
+│   ├── ar
+│   ├── nm
+│   ├── objcopy
+│   ├── objdump
+│   ├── readelf
+│   ├── strip
+│   └── addr2line
+└── lib/               # 可选，存放工具链运行所需共享库
+```
+
+`bin/gcc`（或 `bin/clang`）是固定入口，不再递归搜索任意解压布局。如果
+`compiler-description` 指定了 binutils 版本，则上述 binutils 工具必须全部存在，
+且 `bin/ld --version` 必须严格匹配。入口可以使用相对软链接指向目录内保留的原始文件。
+
+工具链缺失时，平台会以退出码 `2` 安全停止，不打印 Python traceback。错误信息会列出：
+
+- `compiler-description` 原文；
+- 需要下载的 GCC/Clang 和 binutils 版本；
+- 应创建的目标目录；
+- `bin/` 下要求的固定文件名；
+- 本地版本检查命令。
+
+同时仍会生成 `failure.json`，其中 `failure_kind` 为 `toolchain_unavailable`。
+
+项目提供显式工具链初始化脚本。工具链发布者先在
+`configs/toolchains.lock.json` 中填写预编译压缩包的 HTTPS URL 和 SHA256；使用者随后
+可以一次安装清单中的全部工具链：
 
 ```bash
-export PLATFORM_ROOTFS=/path/to/rootfs.img
-export PLATFORM_SSH_KEY=/path/to/id_rsa
-export PLATFORM_SSH_USER=root
-
-syzrun run /path/to/vulnerability.json --work-dir work --timeout 2h
+./scripts/setup_toolchains.sh
 ```
+
+也可以只安装指定版本：
+
+```bash
+./scripts/setup_toolchains.sh gcc-8.0.1
+./scripts/setup_toolchains.sh gcc-10.2.1-binutils-2.35.2
+./scripts/setup_toolchains.sh clang-9.0.0
+./scripts/setup_toolchains.sh clang-10.0.0
+```
+
+压缩包必须只有一个安全的顶层目录；安装后会统一保存为严格版本目录，例如
+`gcc-8.0.1/bin/gcc` 或 `clang-10.0.0/bin/clang`。脚本仅接受 HTTPS 或本地
+`file://` URL，下载后严格校验 SHA256，并在原子迁移到
+`platform/toolchains/` 前再次检查编译器和 binutils 版本。`syzrun run`
+自身仍只检测工具链，不会隐式联网下载。
+
+清单使用私有 GitHub Release Asset API URL 时，安装前需通过环境变量提供只读令牌：
+
+```bash
+GITHUB_TOKEN="$(gh auth token)" ./scripts/setup_toolchains.sh
+```
+
+也可以使用 `GH_TOKEN`。令牌不得写入清单或提交到 Git。
 
 ## 11. 常见问题
 
@@ -290,7 +379,7 @@ syzrun run /path/to/vulnerability.json --work-dir work --timeout 2h
 确认 Conda 环境和安装状态：
 
 ```bash
-conda activate kRepair
+conda activate platform
 python -m pip install -e .
 which syzrun
 ```
@@ -301,7 +390,9 @@ which syzrun
 ./scripts/create_rootfs.sh work/cache/rootfs
 ```
 
-如果 `--work-dir` 不是 `work`，rootfs 默认应放在对应的 `<work-dir>/cache/rootfs/` 中，或者通过 `PLATFORM_ROOTFS` 和 `PLATFORM_SSH_KEY` 指定。
+如果 `--work-dir` 不是 `work`，默认 rootfs 应放在对应的
+`<work-dir>/cache/rootfs/` 中。漏洞专用 rootfs 在
+`configs/vulnerabilities.json` 中配置。
 
 ### QEMU 启动很慢
 
@@ -325,10 +416,10 @@ less work/runs/<vuln-id>/logs/syzkaller-build.log
 
 ## 12. 运行测试
 
-在 `kRepair` 环境中执行：
+在 `platform` 环境中执行：
 
 ```bash
-conda activate kRepair
+conda activate platform
 python -m unittest discover -s tests
 ```
 
@@ -359,6 +450,12 @@ python -m unittest discover -s tests
       ],
       "qemu_args": [],
       "repro_env": {}
+    },
+    "0518799fc2250353125d212fc510c44adbde73c3": {
+      "rootfs": {
+        "image": "cache/rootfs-firmware/rootfs.img",
+        "ssh_key": "cache/rootfs-firmware/id_rsa"
+      }
     }
   }
 }
@@ -371,6 +468,12 @@ python -m unittest discover -s tests
 - `qemu_append`: 追加到 QEMU `-append` 的 Linux kernel command line。
 - `qemu_args`: 追加到 QEMU 命令末尾的参数。
 - `repro_env`: 预留给 reproducer 运行环境变量。
+- `execprog_args`: 仅为该漏洞追加 `syz-execprog` 命令行参数。例如旧内核因
+  cgroup 初始化提前崩溃时可设置 `["-disable=cgroups"]`。未配置时不会改变
+  现有复现命令。
+- `rootfs`: 为当前漏洞选择专用 guest rootfs；`image` 和 `ssh_key` 必填，
+  `ssh_user` 可选并默认为 `root`。相对路径以 `--work-dir` 为基准。
+
 
 ## Python API
 

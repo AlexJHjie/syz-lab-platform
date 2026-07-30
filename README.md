@@ -14,7 +14,7 @@
 
 - Ubuntu Linux
 - Python 3.10 或更高版本
-- Conda 环境：`kRepair`
+- Conda 环境：`platform`
 - QEMU/KVM
 - Git、Go、GCC/Clang 和 Linux 内核编译依赖
 - 建议至少预留 30 GB 磁盘空间
@@ -39,10 +39,10 @@ chmod +x scripts/*.sh examples/*.sh
 
 ## 2. 配置 Conda 环境
 
-激活已有的 `kRepair` 环境：
+激活已有的 `platform` 环境：
 
 ```bash
-conda activate kRepair
+conda activate platform
 ```
 
 确认 Python 版本：
@@ -54,11 +54,11 @@ python --version
 如果环境尚未创建，可执行：
 
 ```bash
-conda create -n kRepair python=3.11 pip -y
-conda activate kRepair
+conda env create -f environment.yml
+conda activate platform
 ```
 
-在项目根目录以可编辑模式安装：
+`environment.yml` 会在项目根目录以可编辑模式安装 `syzrun`。如果需要手动重新安装：
 
 ```bash
 python -m pip install -e .
@@ -124,7 +124,7 @@ ls -l /dev/kvm
 sudo usermod -aG kvm "$USER"
 ```
 
-随后注销并重新登录，再执行 `conda activate kRepair`。没有 KVM 时可以禁用硬件加速，但复现速度会明显降低：
+随后注销并重新登录，再执行 `conda activate platform`。没有 KVM 时可以禁用硬件加速，但复现速度会明显降低：
 
 ```bash
 export PLATFORM_DISABLE_KVM=1
@@ -346,12 +346,15 @@ platform/toolchains/<严格版本目录>/
 ```bash
 ./scripts/setup_toolchains.sh gcc-8.0.1
 ./scripts/setup_toolchains.sh gcc-10.2.1-binutils-2.35.2
+./scripts/setup_toolchains.sh clang-9.0.0
+./scripts/setup_toolchains.sh clang-10.0.0
 ```
 
-压缩包必须以严格版本目录为唯一顶层目录，例如
-`gcc-8.0.1/bin/gcc`。脚本仅接受 HTTPS 或本地 `file://` URL，下载后严格校验
-SHA256，并在原子迁移到 `platform/toolchains/` 前再次检查编译器和 binutils
-版本。`syzrun run` 自身仍只检测工具链，不会隐式联网下载。
+压缩包必须只有一个安全的顶层目录；安装后会统一保存为严格版本目录，例如
+`gcc-8.0.1/bin/gcc` 或 `clang-10.0.0/bin/clang`。脚本仅接受 HTTPS 或本地
+`file://` URL，下载后严格校验 SHA256，并在原子迁移到
+`platform/toolchains/` 前再次检查编译器和 binutils 版本。`syzrun run`
+自身仍只检测工具链，不会隐式联网下载。
 
 清单使用私有 GitHub Release Asset API URL 时，安装前需通过环境变量提供只读令牌：
 
@@ -368,7 +371,7 @@ GITHUB_TOKEN="$(gh auth token)" ./scripts/setup_toolchains.sh
 确认 Conda 环境和安装状态：
 
 ```bash
-conda activate kRepair
+conda activate platform
 python -m pip install -e .
 which syzrun
 ```
@@ -405,10 +408,10 @@ less work/runs/<vuln-id>/logs/syzkaller-build.log
 
 ## 12. 运行测试
 
-在 `kRepair` 环境中执行：
+在 `platform` 环境中执行：
 
 ```bash
-conda activate kRepair
+conda activate platform
 python -m unittest discover -s tests
 ```
 
