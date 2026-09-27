@@ -6,7 +6,7 @@
       "compiler": "gcc",
       "compiler_version": "8.0.1",
       "binutils_version": "",
-      "url": "https://api.github.com/repos/AlexJHjie/syz-lab-platform/releases/assets/481499695",
+      "url": "https://github.com/AlexJHjie/syz-lab-platform/releases/download/toolchains-v1/gcc-8.0.1.tar.xz",
       "sha256": "1f0c10d89d82e0af7117979bc6abf56471777c6a123bb7bb076f297cabd3e488"
     },
     {
@@ -14,7 +14,7 @@
       "compiler": "gcc",
       "compiler_version": "10.2.1",
       "binutils_version": "2.35.2",
-      "url": "https://api.github.com/repos/AlexJHjie/syz-lab-platform/releases/assets/481499739",
+      "url": "https://github.com/AlexJHjie/syz-lab-platform/releases/download/toolchains-v1/gcc-10.2.1-binutils-2.35.2.tar.xz",
       "sha256": "d485ec6587d59336e606cb8cfeeea9fdb90c453c3bbfe3a059fa94e27ff402c4"
     },
     {
@@ -22,7 +22,7 @@
       "compiler": "clang",
       "compiler_version": "9.0.0",
       "binutils_version": "",
-      "url": "https://api.github.com/repos/AlexJHjie/syz-lab-platform/releases/assets/494041706",
+      "url": "https://github.com/AlexJHjie/syz-lab-platform/releases/download/toolchains-v1/clang-9.0.0.tar.gz",
       "sha256": "514c87cf0d21b4b5767705277db7adec41b9fb8e5fee3cfc6a5879de5091d4ea"
     },
     {
@@ -30,7 +30,7 @@
       "compiler": "clang",
       "compiler_version": "10.0.0",
       "binutils_version": "",
-      "url": "https://api.github.com/repos/AlexJHjie/syz-lab-platform/releases/assets/493973211",
+      "url": "https://github.com/AlexJHjie/syz-lab-platform/releases/download/toolchains-v1/clang-10.0.0.tar.gz",
       "sha256": "e98b248c1ffe99990b817de0241a2d10ead33aff96ee8cc20d0a66c784fbb53a"
     },
     {
@@ -38,7 +38,7 @@
       "compiler": "gcc",
       "compiler_version": "9.0.0",
       "binutils_version": "",
-      "url": "https://api.github.com/repos/AlexJHjie/syz-lab-platform/releases/assets/494103662",
+      "url": "https://github.com/AlexJHjie/syz-lab-platform/releases/download/toolchains-v1/gcc-9.0.0.tar.gz",
       "sha256": "336ab70543f6b537c2b1a3d17b00d3b2f349395e3bbcc7b78cf8ecd804ac28c5"
     },
     {
@@ -46,7 +46,7 @@
       "compiler": "clang",
       "compiler_version": "13.0.1",
       "binutils_version": "2.35.2",
-      "url": "https://api.github.com/repos/AlexJHjie/syz-lab-platform/releases/assets/494177913",
+      "url": "https://github.com/AlexJHjie/syz-lab-platform/releases/download/toolchains-v1/clang-13.0.1-binutils-2.35.2.tar.gz",
       "sha256": "1bc4af9e432e473ddb56291ad7b1dbebe2936757cbed9ce1d98d8cf0d7bafa60"
     }
   ]

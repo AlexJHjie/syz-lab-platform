@@ -6,7 +6,11 @@ from unittest import mock
 
 from syzrun.builder.kernel import KernelArtifacts
 from syzrun.builder.syzkaller import SyzkallerArtifacts
-from syzrun.repro.symbolizer import _symbolizer_supports_arch, extract_crash_segment, symbolize_crash
+from syzrun.repro.symbolizer import (
+    _symbolizer_supports_arch,
+    extract_crash_segment,
+    symbolize_crash,
+)
 from syzrun.repro.verdict import CrashFingerprint
 
 
@@ -132,6 +136,43 @@ unreferenced object 0xffff888049e80c00 (size 64):
             self.assertFalse(output.with_suffix(".raw.tmp").exists())
             self.assertFalse(output.with_suffix(".symbolized.tmp").exists())
 
+    def test_can_keep_complete_symbolized_report_for_final_verdict(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            linux = root / "linux"
+            linux.mkdir()
+            (linux / "vmlinux").write_text("elf", encoding="utf-8")
+            syzkaller = root / "syzkaller"
+            symbolizer = syzkaller / "bin" / "syz-symbolize"
+            symbolizer.parent.mkdir(parents=True)
+            symbolizer.write_text("binary", encoding="utf-8")
+            source = root / "qemu.log"
+            source.write_text("BUG: KASAN: vmalloc-out-of-bounds in outer+0x1/0x2\n", encoding="utf-8")
+            output = root / "crash.log"
+            complete = (
+                "TITLE: KASAN: vmalloc-out-of-bounds\n"
+                "BUG: KASAN: vmalloc-out-of-bounds in inner kernel/module/main.c:1 [inline]\n"
+                "BUG: KASAN: vmalloc-out-of-bounds in outer+0x1/0x2\n"
+                "Memory state around the buggy address:\n"
+            )
+            kernel = KernelArtifacts(linux, linux / "bzImage", linux / "vmlinux", linux / ".config")
+            syz = SyzkallerArtifacts(syzkaller, syzkaller / "execprog", syzkaller / "executor", symbolizer)
+            with mock.patch(
+                "syzrun.repro.symbolizer.subprocess.run",
+                side_effect=[
+                    subprocess.CompletedProcess([], 0, "", "  -arch string\n"),
+                    subprocess.CompletedProcess([], 0, complete, ""),
+                ],
+            ):
+                result = symbolize_crash(
+                    kernel=kernel, syzkaller=syz, architecture="amd64",
+                    source_log=source, target=CrashFingerprint("KASAN", "vmalloc-out-of-bounds", ("outer",)),
+                    report_text=source.read_text(encoding="utf-8"), output_path=output,
+                    extract_target=False,
+                )
+            self.assertEqual(result, output)
+            self.assertEqual(output.read_text(encoding="utf-8"), complete)
+
     def test_symbolizer_failure_does_not_leave_crash_log(self) -> None:
         target = CrashFingerprint("WARNING", None, ("target",))
         with tempfile.TemporaryDirectory() as tmp:
@@ -176,7 +217,10 @@ unreferenced object 0xffff888049e80c00 (size 64):
         _symbolizer_supports_arch.cache_clear()
         completed = subprocess.CompletedProcess([], 0, "", "  -arch string\n")
 
-        with mock.patch("syzrun.repro.symbolizer.subprocess.run", return_value=completed) as run_mock:
+        with mock.patch(
+            "syzrun.repro.symbolizer.subprocess.run",
+            return_value=completed,
+        ) as run_mock:
             self.assertTrue(_symbolizer_supports_arch(symbolizer))
             self.assertTrue(_symbolizer_supports_arch(symbolizer))
 

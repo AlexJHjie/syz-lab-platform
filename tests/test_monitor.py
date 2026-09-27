@@ -11,7 +11,6 @@ from syzrun.repro.monitor import (
     _IncrementalLogScanner,
     _drain_qemu_log_after_crash,
     _should_stop_attempts,
-    _symbolization_target,
     _verdict_after_repro_exit,
     _verdict_after_vm_exit,
 )
@@ -136,62 +135,111 @@ class EarlyExitVerdictTests(unittest.TestCase):
         self.assertIs(_verdict_after_vm_exit(verdict), verdict)
 
 
-class CrashSymbolizationTargetTests(unittest.TestCase):
-    def test_other_crash_uses_its_observed_fingerprint(self) -> None:
-        target = CrashFingerprint("GPF", None, ("target_fn",))
-        report = "WARNING: CPU: 0 PID: 1 at other_fn+0x1/0x2\n"
-        result = AttemptResult(
-            number=1,
-            status="crashed_other",
-            matched=None,
-            reason="other kernel crash found",
-            duration_seconds=1,
-            logs_dir=Path("logs/attempt-01"),
-            syz=None,
-            source_log="qemu.log",
-            report=report,
-        )
-
-        self.assertEqual(
-            _symbolization_target(result, target),
-            CrashFingerprint("WARNING", None, ("other_fn",)),
-        )
-
-    def test_symbolizer_failure_does_not_change_other_crash_verdict(self) -> None:
-        target = CrashFingerprint("GPF", None, ("target_fn",))
-        report = "WARNING: CPU: 0 PID: 1 at other_fn+0x1/0x2\n"
-        attempt = AttemptResult(
-            number=1,
-            status="crashed_other",
-            matched=None,
-            reason="other kernel crash found",
-            duration_seconds=1,
-            logs_dir=Path("logs/attempt-01"),
-            syz=None,
-            source_log="qemu.log",
-            report=report,
-        )
+class CrashSymbolizationVerdictTests(unittest.TestCase):
+    def make_runner(self, logs_dir: Path, target: CrashFingerprint, attempt: AttemptResult) -> ReproductionRunner:
         runner = object.__new__(ReproductionRunner)
-        runner.layout = SimpleNamespace(logs_dir=Path("logs"))
+        runner.layout = SimpleNamespace(logs_dir=logs_dir.parent)
         runner.vuln = SimpleNamespace(crash=SimpleNamespace(architecture="amd64"))
         runner.kernel = object()
         runner.syzkaller = object()
         runner.target = target
         runner.runtime_profile = None
+        runner.attempt_count = 1
+        runner._run_attempt = mock.Mock(return_value=attempt)
+        return runner
 
-        with (
-            mock.patch("syzrun.repro.monitor.ATTEMPT_COUNT", 1),
-            mock.patch("syzrun.repro.monitor.RootfsLocator.locate", return_value=object()),
-            mock.patch.object(runner, "_run_attempt", return_value=attempt),
-            mock.patch("syzrun.repro.monitor.symbolize_crash", side_effect=RuntimeError("boom")) as symbolize,
-        ):
-            result = runner.run()
+    def test_later_symbolized_report_can_match_target(self) -> None:
+        target = CrashFingerprint("KASAN", "vmalloc-out-of-bounds", ("idempotent",))
+        with tempfile.TemporaryDirectory() as tmp:
+            logs = Path(tmp) / "attempt-01"
+            logs.mkdir()
+            raw = (
+                "BUG: KASAN: vmalloc-out-of-bounds in other_fn+0x1/0x2\n"
+                "Read of size 8\n================================\n"
+                "BUG: KASAN: vmalloc-out-of-bounds in __se_sys_finit_module+0x371/0x8d0\n"
+                "Read of size 8\n================================\n"
+            )
+            boot = "BUG: KASAN: vmalloc-out-of-bounds in boot_fn+0x1/0x2\n"
+            (logs / "qemu.log").write_text(boot + raw, encoding="utf-8")
+            attempt = AttemptResult(
+                1, "crashed_other", None, "other kernel crash found", 1, logs, None,
+                source_log="qemu.log", report=raw.split("================================")[0],
+                log_offsets={"qemu.log": len(boot)},
+            )
+            runner = self.make_runner(logs, target, attempt)
 
-        self.assertEqual(result.verdict.status, "crashed_other")
-        self.assertEqual(
-            symbolize.call_args.kwargs["target"],
-            CrashFingerprint("WARNING", None, ("other_fn",)),
-        )
+            def symbolize(**kwargs):
+                output = kwargs["output_path"]
+                if "other_fn" in kwargs["report_text"]:
+                    output.write_text("BUG: KASAN: vmalloc-out-of-bounds in other_fn+0x1/0x2\n", encoding="utf-8")
+                else:
+                    output.write_text(
+                        "TITLE: KASAN report\n"
+                        "BUG: KASAN: vmalloc-out-of-bounds in __se_sys_finit_module+0x371/0x8d0\n"
+                        " idempotent kernel/module/main.c:3078 [inline]\n"
+                        "Memory state around the buggy address:\n",
+                        encoding="utf-8",
+                    )
+                return output
+
+            with (
+                mock.patch("syzrun.repro.monitor.RootfsLocator.locate", return_value=object()),
+                mock.patch("syzrun.repro.monitor.symbolize_crash", side_effect=symbolize) as mocked,
+            ):
+                result = runner.run()
+
+            self.assertEqual(result.verdict.status, "reproduced")
+            self.assertEqual(result.attempts[0].matched, "KASAN in idempotent")
+            self.assertEqual(mocked.call_count, 2)
+            self.assertTrue(all(call.kwargs["extract_target"] is False for call in mocked.call_args_list))
+            self.assertTrue((logs / "crash.log").read_text(encoding="utf-8").startswith("BUG: KASAN:"))
+            self.assertIn("idempotent", (logs / "crash.log").read_text(encoding="utf-8"))
+            self.assertIn("Memory state around the buggy address:", (logs / "crash.log").read_text(encoding="utf-8"))
+            self.assertNotIn("other_fn", (logs / "crash.log").read_text(encoding="utf-8"))
+
+    def test_symbolized_nonmatch_overrides_raw_match(self) -> None:
+        target = CrashFingerprint("KASAN", "use-after-free", ("shared_frame",))
+        with tempfile.TemporaryDirectory() as tmp:
+            logs = Path(tmp) / "attempt-01"
+            logs.mkdir()
+            raw = "BUG: KASAN: use-after-free in shared_frame+0x1/0x2\n"
+            (logs / "qemu.log").write_text(raw, encoding="utf-8")
+            attempt = AttemptResult(1, "reproduced", "KASAN in shared_frame", "matched crash fingerprint", 1, logs, None, source_log="qemu.log", report=raw)
+            runner = self.make_runner(logs, target, attempt)
+
+            def symbolize(**kwargs):
+                output = kwargs["output_path"]
+                output.write_text("BUG: KASAN: use-after-free in other_fn+0x1/0x2\n", encoding="utf-8")
+                return output
+
+            with mock.patch("syzrun.repro.monitor.symbolize_crash", side_effect=symbolize):
+                result = runner._finalize_attempt(attempt)
+
+            self.assertEqual(result.status, "crashed_other")
+            self.assertIsNone(result.matched)
+            self.assertIn("other_fn", (logs / "crash.log").read_text(encoding="utf-8"))
+
+    def test_symbolizer_failure_keeps_raw_verdict(self) -> None:
+        target = CrashFingerprint("GPF", None, ("target_fn",))
+        report = "WARNING: CPU: 0 PID: 1 at other_fn+0x1/0x2\n"
+        with tempfile.TemporaryDirectory() as tmp:
+            logs = Path(tmp) / "attempt-01"
+            logs.mkdir()
+            (logs / "qemu.log").write_text(report, encoding="utf-8")
+            attempt = AttemptResult(
+                1, "crashed_other", None, "other kernel crash found", 1, logs, None,
+                source_log="qemu.log", report=report,
+            )
+            runner = self.make_runner(logs, target, attempt)
+
+            with mock.patch(
+                "syzrun.repro.monitor.symbolize_crash", side_effect=RuntimeError("boom")
+            ) as symbolize:
+                result = runner._finalize_attempt(attempt)
+
+            self.assertIs(result, attempt)
+            self.assertEqual(symbolize.call_count, 1)
+            self.assertFalse((logs / "crash.log").exists())
 
 
 if __name__ == "__main__":

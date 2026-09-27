@@ -34,6 +34,7 @@ REPORT_STARTS = (
     ("KMSAN", re.compile(PREFIX + r"BUG:\s+KMSAN:", re.I)),
     ("WARNING", re.compile(PREFIX + r"WARNING:(?=\s+(?:CPU:\s+\d+(?:\s+PID:\s+\d+)?\s+)?at\b)", re.I)),
     ("GPF", re.compile(PREFIX + r"(?:BUG:\s+GPF\b|general protection fault(?:\b|:))", re.I)),
+    ("DIVIDE_ERROR", re.compile(PREFIX + r"divide error:", re.I)),
     ("HUNG_TASK", re.compile(PREFIX + r"INFO:\s+task .+ blocked for more than\b", re.I)),
     ("RCU_STALL", re.compile(PREFIX + r"INFO:\s+rcu(?:_[a-z]+)? detected stalls\b", re.I)),
     ("SOFT_LOCKUP", re.compile(PREFIX + r"(?:watchdog:\s+)?BUG:\s+soft lockup\b", re.I)),

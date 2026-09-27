@@ -3,7 +3,8 @@ from __future__ import annotations
 import codecs
 import logging
 import time
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
+from tempfile import TemporaryDirectory
 from pathlib import Path
 
 from ..builder.kernel import KernelArtifacts
@@ -16,7 +17,7 @@ from .qemu import QemuVM
 from .rootfs import RootfsLocator
 from .symbolizer import symbolize_crash
 from .syz_execprog import SyzRunResult, start_syz_repro, stop_syz_repro
-from .verdict import CrashFingerprint, StreamMatcher, Verdict, classify, split_reports, target_fingerprint
+from .verdict import CrashFingerprint, CrashReport, StreamMatcher, Verdict, classify, classify_text, split_reports, target_fingerprint
 
 ATTEMPT_COUNT = 3
 REPRO_TIMEOUT = 2 * 60
@@ -66,6 +67,7 @@ class AttemptResult:
     error: str | None = None
     source_log: str | None = None
     report: str | None = field(default=None, repr=False, compare=False)
+    log_offsets: dict[str, int] = field(default_factory=dict, repr=False, compare=False)
 
 
 @dataclass(frozen=True)
@@ -86,7 +88,10 @@ class ReproductionRunner:
         fetched: FetchedArtifacts,
         timeout: int | None,
         runtime_profile: RuntimeProfile | None = None,
+        attempt_count: int = ATTEMPT_COUNT,
     ) -> None:
+        if attempt_count < 1:
+            raise ValueError("attempt_count must be at least 1")
         self.layout = layout
         self.vuln = vuln
         self.kernel = kernel
@@ -95,15 +100,17 @@ class ReproductionRunner:
         self.target: CrashFingerprint = target_fingerprint(fetched.crash_report)
         self.runtime_profile = runtime_profile or RuntimeProfile.empty()
         self.timeout = timeout
+        self.attempt_count = attempt_count
 
     def run(self) -> ReproResult:
         rootfs = RootfsLocator(self.layout, self.runtime_profile).locate()
         attempts: list[AttemptResult] = []
+        attempt_count = getattr(self, "attempt_count", ATTEMPT_COUNT)
 
-        for number in range(1, ATTEMPT_COUNT + 1):
+        for number in range(1, attempt_count + 1):
             logs_dir = self.layout.logs_dir / f"attempt-{number:02d}"
             started = time.monotonic()
-            logging.info("starting reproduction attempt %d/%d", number, ATTEMPT_COUNT)
+            logging.info("starting reproduction attempt %d/%d", number, attempt_count)
             try:
                 result = self._run_attempt(number, logs_dir, rootfs)
             except Exception as exc:
@@ -118,25 +125,7 @@ class ReproductionRunner:
                     error=str(exc),
                     source_log=None,
                 )
-            symbolization_target = _symbolization_target(result, self.target)
-            if symbolization_target is not None:
-                try:
-                    source_log = result.source_log or "qemu.log"
-                    crash_log = symbolize_crash(
-                        kernel=self.kernel,
-                        syzkaller=self.syzkaller,
-                        architecture=self.vuln.crash.architecture,
-                        source_log=logs_dir / source_log,
-                        target=symbolization_target,
-                        report_text=result.report,
-                        output_path=logs_dir / "crash.log",
-                    )
-                    if crash_log:
-                        logging.info("symbolized crash log: %s", crash_log)
-                    else:
-                        logging.warning("could not locate %s crash in %s", result.status, logs_dir / source_log)
-                except Exception as exc:
-                    logging.warning("failed to symbolize %s crash: %s", result.status, exc)
+            result = self._finalize_attempt(result)
             attempts.append(result)
             logging.info("attempt %d finished: %s (%s)", number, result.status, result.reason)
             if _should_stop_attempts(result.status):
@@ -145,6 +134,68 @@ class ReproductionRunner:
         verdict = _summarize_attempts(attempts)
         syz = next((item.syz for item in reversed(attempts) if item.syz is not None), None)
         return ReproResult(syz=syz, verdict=verdict, attempts=attempts)
+
+    def _finalize_attempt(self, result: AttemptResult) -> AttemptResult:
+        if result.status not in {"reproduced", "crashed_other"}:
+            return result
+        reports = _reports_from_attempt(result)
+        if not reports:
+            return result
+
+        # A raw stack can omit inline frames. Symbolize each compatible report
+        # before deciding whether the target crash occurred.
+        candidates = [
+            (source, report) for source, report in reports
+            if _same_crash_kind(self.target, report.fingerprint)
+        ]
+        if reports[0] not in candidates:
+            candidates.append(reports[0])  # Keep an artifact for an unrelated crash.
+        first_symbolized: tuple[str, str] | None = None
+        crash_log = result.logs_dir / "crash.log"
+        with TemporaryDirectory(prefix=".symbolize-", dir=result.logs_dir) as tmp:
+            for index, (source, report) in enumerate(candidates):
+                try:
+                    symbolized = symbolize_crash(
+                        kernel=self.kernel,
+                        syzkaller=self.syzkaller,
+                        architecture=self.vuln.crash.architecture,
+                        source_log=result.logs_dir / source,
+                        target=report.fingerprint,
+                        report_text=report.text,
+                        output_path=Path(tmp) / f"crash-{index:02d}.log",
+                        extract_target=False,
+                    )
+                    if symbolized is None:
+                        continue
+                    text = symbolized.read_text(encoding="utf-8", errors="replace")
+                    parsed = split_reports(text)
+                    if not parsed:
+                        continue
+                    complete_report = text[text.index(parsed[0].text):]
+                    verdict = classify_text(self.target, text, source_log=source)
+                    if verdict.status == "reproduced":
+                        crash_log.write_text(complete_report, encoding="utf-8")
+                        logging.info("symbolized crash log: %s", crash_log)
+                        return replace(
+                            result, status="reproduced", matched=verdict.matched,
+                            reason="matched symbolized crash fingerprint",
+                            source_log=source, report=complete_report,
+                        )
+                    if first_symbolized is None:
+                        first_symbolized = (source, complete_report)
+                except Exception as exc:
+                    logging.warning("failed to symbolize crash from %s: %s", source, exc)
+
+        if first_symbolized is not None:
+            source, report = first_symbolized
+            crash_log.write_text(report, encoding="utf-8")
+            logging.info("symbolized crash log: %s", crash_log)
+            return replace(
+                result, status="crashed_other", matched=None,
+                reason="other kernel crash found after symbolization",
+                source_log=source, report=report,
+            )
+        return result  # Keep the raw verdict when symbolization is unavailable.
 
     def _run_attempt(self, number: int, logs_dir: Path, rootfs) -> AttemptResult:
         vm = QemuVM(
@@ -163,6 +214,7 @@ class ReproductionRunner:
             qemu_offset = vm.qemu_log.stat().st_size if vm.qemu_log.exists() else 0
             repro_log = logs_dir / "repro.log"
             repro_offset = repro_log.stat().st_size if repro_log.exists() else 0
+            offsets = {"qemu.log": qemu_offset, "repro.log": repro_offset}
             qemu_scanner = _IncrementalLogScanner(vm.qemu_log, start_offset=qemu_offset)
             repro_scanner = _IncrementalLogScanner(repro_log, start_offset=repro_offset)
             qemu_matcher = StreamMatcher(self.target, "qemu.log")
@@ -187,9 +239,9 @@ class ReproductionRunner:
                         exit_code = stop_syz_repro(process)
                         _drain_qemu_log_after_crash(vm.qemu_log, start_offset=qemu_offset)
                         verdict = classify(
-                            self.target, logs_dir, {"qemu.log": qemu_offset, "repro.log": repro_offset}
+                            self.target, logs_dir, offsets
                         )
-                        return _attempt_result(number, verdict, started, logs_dir, exit_code, remote_command)
+                        return _attempt_result(number, verdict, started, logs_dir, exit_code, remote_command, offsets)
 
                 repro_text = repro_scanner.read_text()
                 if repro_text is not None:
@@ -199,25 +251,25 @@ class ReproductionRunner:
                     if verdict.status == "reproduced":
                         exit_code = stop_syz_repro(process)
                         verdict = classify(
-                            self.target, logs_dir, {"qemu.log": qemu_offset, "repro.log": repro_offset}
+                            self.target, logs_dir, offsets
                         )
-                        return _attempt_result(number, verdict, started, logs_dir, exit_code, remote_command)
+                        return _attempt_result(number, verdict, started, logs_dir, exit_code, remote_command, offsets)
 
                 returncode = process.poll()
                 if returncode is not None:
-                    verdict = classify(self.target, logs_dir, {"qemu.log": qemu_offset, "repro.log": repro_offset})
+                    verdict = classify(self.target, logs_dir, offsets)
                     verdict = _verdict_after_repro_exit(verdict, returncode)
-                    return _attempt_result(number, verdict, started, logs_dir, returncode, remote_command)
+                    return _attempt_result(number, verdict, started, logs_dir, returncode, remote_command, offsets)
 
                 if vm.process and vm.process.poll() is not None:
-                    verdict = classify(self.target, logs_dir, {"qemu.log": qemu_offset, "repro.log": repro_offset})
+                    verdict = classify(self.target, logs_dir, offsets)
                     verdict = _verdict_after_vm_exit(verdict)
-                    return _attempt_result(number, verdict, started, logs_dir, process.poll(), remote_command)
+                    return _attempt_result(number, verdict, started, logs_dir, process.poll(), remote_command, offsets)
                 time.sleep(MONITOR_INTERVAL)
 
             exit_code = stop_syz_repro(process)
-            verdict = classify(self.target, logs_dir, {"qemu.log": qemu_offset, "repro.log": repro_offset})
-            return _attempt_result(number, verdict, started, logs_dir, exit_code, remote_command)
+            verdict = classify(self.target, logs_dir, offsets)
+            return _attempt_result(number, verdict, started, logs_dir, exit_code, remote_command, offsets)
         finally:
             if process is not None and process.poll() is None:
                 stop_syz_repro(process)
@@ -288,6 +340,7 @@ def _attempt_result(
     logs_dir: Path,
     exit_code: int | None,
     remote_command: str,
+    log_offsets: dict[str, int],
 ) -> AttemptResult:
     return AttemptResult(
         number=number,
@@ -299,6 +352,7 @@ def _attempt_result(
         syz=SyzRunResult(exit_code=exit_code, remote_command=remote_command),
         source_log=verdict.source_log,
         report=verdict.report,
+        log_offsets=log_offsets,
     )
 
 
@@ -327,15 +381,27 @@ def _should_stop_attempts(status: str) -> bool:
     return status in {"reproduced", "failed"}
 
 
-def _symbolization_target(
-    result: AttemptResult, target: CrashFingerprint
-) -> CrashFingerprint | None:
-    if result.status == "reproduced":
-        return target
-    if result.status != "crashed_other" or result.report is None:
-        return None
-    reports = split_reports(result.report)
-    return reports[0].fingerprint if reports else None
+def _reports_from_attempt(result: AttemptResult) -> list[tuple[str, CrashReport]]:
+    reports: list[tuple[str, CrashReport]] = []
+    for source in ("qemu.log", "repro.log"):
+        path = result.logs_dir / source
+        if path.is_file():
+            with path.open("rb") as stream:
+                stream.seek(result.log_offsets.get(source, 0))
+                text = stream.read().decode(errors="replace")
+            reports.extend((source, report) for report in split_reports(text))
+    if not reports and result.report is not None:
+        reports.extend(
+            (result.source_log or "qemu.log", report)
+            for report in split_reports(result.report)
+        )
+    return reports
+
+
+def _same_crash_kind(target: CrashFingerprint, observed: CrashFingerprint) -> bool:
+    return target.report_type == observed.report_type and (
+        not target.subtype or not observed.subtype or target.subtype == observed.subtype
+    )
 
 
 def _summarize_attempts(attempts: list[AttemptResult]) -> Verdict:

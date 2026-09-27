@@ -40,8 +40,9 @@ def symbolize_crash(
     report_text: str | None,
     output_path: Path,
     timeout: int | None = None,
+    extract_target: bool = True,
 ) -> Path | None:
-    """Extract the target crash and symbolize it with syz-symbolize."""
+    """Symbolize a crash report, optionally extracting its matching segment."""
 
     timeout = _symbolizer_timeout() if timeout is None else timeout
     if not source_log.is_file():
@@ -93,6 +94,10 @@ def symbolize_crash(
         if result.returncode != 0:
             detail = result.stderr.strip() or result.stdout.strip()
             raise RuntimeError(f"syz-symbolize failed ({result.returncode}): {detail}")
+
+        if not extract_target:
+            output_path.write_text(result.stdout, encoding="utf-8", errors="replace")
+            return output_path
 
         symbolized_path.write_text(result.stdout, encoding="utf-8", errors="replace")
         if not extract_crash_segment(symbolized_path, output_path, target):
