@@ -39,7 +39,7 @@
       "compiler_version": "11.0.1",
       "binutils_version": "2.35.2",
       "url": "https://github.com/AlexJHjie/syz-lab-platform/releases/download/toolchains-v1/clang-11.0.1-binutils-2.35.2.tar.gz",
-      "sha256": "2451cd4e7035c6f77b9030363325aed2ca27436a3df80d6392064cd74944a4be"
+      "sha256": "bc7b1dffea93e5f4d10d9bb875adf05c1906052e76e1140e4295347b8e0120af"
     },
     {
       "key": "gcc-9.0.0",
