@@ -13,7 +13,7 @@ Usage:
 
 Install all toolchains from configs/toolchains.lock.json, or only the specified
 keys. Existing installations with matching compiler/binutils versions are
-skipped.
+skipped. Failed installations are summarized after all keys have been tried.
 
 Environment:
   PLATFORM_TOOLCHAIN_MANIFEST  Use another lock manifest.
@@ -28,7 +28,7 @@ die() {
   exit 1
 }
 
-for command in python3 curl sha256sum tar; do
+for command in python3 curl sha256sum tar tee; do
   command -v "${command}" >/dev/null 2>&1 || die "required command is not installed: ${command}"
 done
 
@@ -171,6 +171,8 @@ install_toolchain() {
   esac
   local archive="${DOWNLOAD_DIR}/${archive_name}"
   local partial="${archive}.partial"
+  local staging=""
+  trap 'if [[ -n "${staging}" ]]; then rm -rf -- "${staging}"; fi; rm -f -- "${partial}"' EXIT
 
   if [[ -f "${archive}" ]] &&
     echo "${expected_sha256}  ${archive}" | sha256sum --check --status; then
@@ -203,9 +205,7 @@ install_toolchain() {
     mv -- "${partial}" "${archive}"
   fi
 
-  local staging
   staging="$(mktemp -d "${TOOLCHAINS_DIR}/.${key}.install.XXXXXX")"
-  trap 'rm -rf -- "${staging}" "${partial:-}"' RETURN
 
   local first_component
   first_component="$(
@@ -244,13 +244,37 @@ install_toolchain() {
 
   mv -- "${extracted}" "${target}"
   rm -rf -- "${staging}"
-  trap - RETURN
+  trap - EXIT
   echo "installed: ${target}"
 }
 
+log_dir="$(mktemp -d "${TMPDIR:-/tmp}/setup-toolchains.XXXXXX")"
+trap 'rm -rf -- "${log_dir}"' EXIT
+failed_keys=()
+failed_logs=()
+record_index=0
 while IFS=$'\x1f' read -r key compiler compiler_version binutils_version url sha256; do
-  install_toolchain "${key}" "${compiler}" "${compiler_version}" \
-    "${binutils_version}" "${url}" "${sha256}"
+  log="${log_dir}/${record_index}.log"
+  record_index=$((record_index + 1))
+  # Let each package keep errexit while the parent collects its status.
+  set +e
+  (set -e; install_toolchain "${key}" "${compiler}" "${compiler_version}" \
+    "${binutils_version}" "${url}" "${sha256}") 2>&1 | tee "${log}"
+  statuses=("${PIPESTATUS[@]}")
+  set -e
+  if (( statuses[0] != 0 || statuses[1] != 0 )); then
+    failed_keys+=("${key}")
+    failed_logs+=("${log}")
+  fi
 done <<<"${RECORDS}"
+
+if (( ${#failed_keys[@]} > 0 )); then
+  printf '\nfailed toolchains (%d):\n' "${#failed_keys[@]}" >&2
+  for index in "${!failed_keys[@]}"; do
+    printf '\n%s:\n' "${failed_keys[index]}" >&2
+    cat -- "${failed_logs[index]}" >&2
+  done
+  exit 1
+fi
 
 echo "toolchain setup complete"
