@@ -2,36 +2,28 @@
   "schema_version": 1,
   "toolchains": [
     {
-      "key": "gcc-8.0.1",
-      "compiler": "gcc",
-      "compiler_version": "8.0.1",
-      "binutils_version": "",
-      "url": "https://github.com/AlexJHjie/syz-lab-platform/releases/download/toolchains-v1/gcc-8.0.1.tar.xz",
-      "sha256": "1f0c10d89d82e0af7117979bc6abf56471777c6a123bb7bb076f297cabd3e488"
-    },
-    {
-      "key": "gcc-10.2.1-binutils-2.35.2",
-      "compiler": "gcc",
-      "compiler_version": "10.2.1",
-      "binutils_version": "2.35.2",
-      "url": "https://github.com/AlexJHjie/syz-lab-platform/releases/download/toolchains-v1/gcc-10.2.1-binutils-2.35.2.tar.xz",
-      "sha256": "d485ec6587d59336e606cb8cfeeea9fdb90c453c3bbfe3a059fa94e27ff402c4"
-    },
-    {
-      "key": "clang-9.0.0",
-      "compiler": "clang",
-      "compiler_version": "9.0.0",
-      "binutils_version": "",
-      "url": "https://github.com/AlexJHjie/syz-lab-platform/releases/download/toolchains-v1/clang-9.0.0.tar.gz",
-      "sha256": "514c87cf0d21b4b5767705277db7adec41b9fb8e5fee3cfc6a5879de5091d4ea"
-    },
-    {
       "key": "clang-10.0.0",
       "compiler": "clang",
       "compiler_version": "10.0.0",
       "binutils_version": "",
       "url": "https://github.com/AlexJHjie/syz-lab-platform/releases/download/toolchains-v1/clang-10.0.0.tar.gz",
-      "sha256": "e98b248c1ffe99990b817de0241a2d10ead33aff96ee8cc20d0a66c784fbb53a"
+      "sha256": "dde13b06874cdbf8e50e8ebe3be68c7e86bf0776a264b6b863257ffbfe149abc"
+    },
+    {
+      "key": "clang-11.0.0",
+      "compiler": "clang",
+      "compiler_version": "11.0.0",
+      "binutils_version": "",
+      "url": "https://github.com/AlexJHjie/syz-lab-platform/releases/download/toolchains-v1/clang-11.0.0.tar.gz",
+      "sha256": "2376bb4b96dd7061de1ce61d183435a94b2ebd78a9e4f1869b8cbdb47095ae21"
+    },
+    {
+      "key": "clang-11.0.1-binutils-2.35.1",
+      "compiler": "clang",
+      "compiler_version": "11.0.1",
+      "binutils_version": "2.35.1",
+      "url": "https://github.com/AlexJHjie/syz-lab-platform/releases/download/toolchains-v1/clang-11.0.1-binutils-2.35.1.tar.gz",
+      "sha256": "b93db4622b5631c9a0e6eee57525ab764dd6c115de36965c0555273959d41d43"
     },
     {
       "key": "clang-11.0.1-binutils-2.35.2",
@@ -39,15 +31,7 @@
       "compiler_version": "11.0.1",
       "binutils_version": "2.35.2",
       "url": "https://github.com/AlexJHjie/syz-lab-platform/releases/download/toolchains-v1/clang-11.0.1-binutils-2.35.2.tar.gz",
-      "sha256": "bc7b1dffea93e5f4d10d9bb875adf05c1906052e76e1140e4295347b8e0120af"
-    },
-    {
-      "key": "gcc-9.0.0",
-      "compiler": "gcc",
-      "compiler_version": "9.0.0",
-      "binutils_version": "",
-      "url": "https://github.com/AlexJHjie/syz-lab-platform/releases/download/toolchains-v1/gcc-9.0.0.tar.gz",
-      "sha256": "336ab70543f6b537c2b1a3d17b00d3b2f349395e3bbcc7b78cf8ecd804ac28c5"
+      "sha256": "63372d6ae8365bba5f5fc45d583eb239245466deac5c782942977ba369bfcc3b"
     },
     {
       "key": "clang-13.0.1-binutils-2.35.2",
@@ -55,7 +39,15 @@
       "compiler_version": "13.0.1",
       "binutils_version": "2.35.2",
       "url": "https://github.com/AlexJHjie/syz-lab-platform/releases/download/toolchains-v1/clang-13.0.1-binutils-2.35.2.tar.gz",
-      "sha256": "1bc4af9e432e473ddb56291ad7b1dbebe2936757cbed9ce1d98d8cf0d7bafa60"
+      "sha256": "4267cadb256d3b9e8f75001bd7b0ada8f94dadc846e0d72c3d655b29fd90ff0d"
+    },
+    {
+      "key": "clang-15.0.6-binutils-2.40",
+      "compiler": "clang",
+      "compiler_version": "15.0.6",
+      "binutils_version": "2.40",
+      "url": "https://github.com/AlexJHjie/syz-lab-platform/releases/download/toolchains-v1/clang-15.0.6-binutils-2.40.tar.gz",
+      "sha256": "66a78335c6653a7547754d9add1573ad6b01fea3d616c51f8c1e2decaf77ce4d"
     },
     {
       "key": "clang-15.0.7-binutils-2.35.2",
@@ -63,7 +55,63 @@
       "compiler_version": "15.0.7",
       "binutils_version": "2.35.2",
       "url": "https://github.com/AlexJHjie/syz-lab-platform/releases/download/toolchains-v1/clang-15.0.7-binutils-2.35.2.tar.gz",
-      "sha256": "ce7757d86774424f0fb1defa539bab7c9dd53070ababb9563c8f8736d2fa7162"
+      "sha256": "6fbdc7ad1f8617b1b466ce89a06ed5f4adfac57504fb758549f2375368c4af64"
+    },
+    {
+      "key": "clang-9.0.0",
+      "compiler": "clang",
+      "compiler_version": "9.0.0",
+      "binutils_version": "",
+      "url": "https://github.com/AlexJHjie/syz-lab-platform/releases/download/toolchains-v1/clang-9.0.0.tar.gz",
+      "sha256": "cd6565185cb205d68178083d083b40b748047d1814fea817f51d37b54a572d5f"
+    },
+    {
+      "key": "gcc-10.1.0",
+      "compiler": "gcc",
+      "compiler_version": "10.1.0",
+      "binutils_version": "",
+      "url": "https://github.com/AlexJHjie/syz-lab-platform/releases/download/toolchains-v1/gcc-10.1.0.tar.gz",
+      "sha256": "8277cd64ef5e28409310d8fd072cbeeb6e0bb9a3d514c11af0b1bb1d87f8ca2d"
+    },
+    {
+      "key": "gcc-10.2.1-binutils-2.35.1",
+      "compiler": "gcc",
+      "compiler_version": "10.2.1",
+      "binutils_version": "2.35.1",
+      "url": "https://github.com/AlexJHjie/syz-lab-platform/releases/download/toolchains-v1/gcc-10.2.1-binutils-2.35.1.tar.gz",
+      "sha256": "027057d23c9ae0f88c7226df840f57d6356e4222e693a35f01cce2e5b8cd36b4"
+    },
+    {
+      "key": "gcc-10.2.1-binutils-2.35.2",
+      "compiler": "gcc",
+      "compiler_version": "10.2.1",
+      "binutils_version": "2.35.2",
+      "url": "https://github.com/AlexJHjie/syz-lab-platform/releases/download/toolchains-v1/gcc-10.2.1-binutils-2.35.2.tar.xz",
+      "sha256": "5fbc43d50dac39e26e4cb53e2244f816813004754921b0eafefbacd3f61df223"
+    },
+    {
+      "key": "gcc-7.1.1",
+      "compiler": "gcc",
+      "compiler_version": "7.1.1",
+      "binutils_version": "",
+      "url": "https://github.com/AlexJHjie/syz-lab-platform/releases/download/toolchains-v1/gcc-7.1.1.tar.gz",
+      "sha256": "9c58d458c694b67b479d0d884b5624ec86c62f110aa03b9d7b5abc2c049f8bf5"
+    },
+    {
+      "key": "gcc-8.0.1",
+      "compiler": "gcc",
+      "compiler_version": "8.0.1",
+      "binutils_version": "",
+      "url": "https://github.com/AlexJHjie/syz-lab-platform/releases/download/toolchains-v1/gcc-8.0.1.tar.xz",
+      "sha256": "edf4ea8130f1368cb6b37b470fbaa99f91e8ea4b1756700e718d3758d939e7f7"
+    },
+    {
+      "key": "gcc-9.0.0",
+      "compiler": "gcc",
+      "compiler_version": "9.0.0",
+      "binutils_version": "",
+      "url": "https://github.com/AlexJHjie/syz-lab-platform/releases/download/toolchains-v1/gcc-9.0.0.tar.gz",
+      "sha256": "fe88381f25ba9319c18c1fac8287f74e89cd0329e3ec7da36a2f293b9e40368c"
     }
   ]
 }
