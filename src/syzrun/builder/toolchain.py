@@ -3,6 +3,7 @@ from __future__ import annotations
 import os
 import re
 import subprocess
+from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -101,6 +102,7 @@ def ensure_toolchain(
     description: str,
     *,
     toolchains_dir: Path = DEFAULT_TOOLCHAINS_DIR,
+    version_runner: Callable | None = None,
 ) -> Toolchain:
     requirement = parse_toolchain_requirement(description)
     target = toolchains_dir.resolve() / requirement.key
@@ -116,12 +118,12 @@ def ensure_toolchain(
             f"Please place {requirement.compiler} {requirement.version} at this exact path"
         )
     effective_library_dir = library_dir if library_dir.is_dir() else None
-    actual_version = _compiler_version(compiler, effective_library_dir)
+    actual_version = _compiler_version(compiler, effective_library_dir, version_runner)
     if actual_version != requirement.version:
         raise ToolchainError(
             f"compiler version mismatch at {compiler}: expected {requirement.version}, got {actual_version}"
         )
-    tools = _check_binutils(bin_dir, requirement, effective_library_dir)
+    tools = _check_binutils(bin_dir, requirement, effective_library_dir, version_runner)
     return Toolchain(
         requirement=requirement,
         root=target,
@@ -171,6 +173,7 @@ def _check_binutils(
     bin_dir: Path,
     requirement: ToolchainRequirement,
     library_dir: Path | None,
+    version_runner: Callable | None = None,
 ) -> dict[str, Path]:
     tools: dict[str, Path] = {}
     names = REQUIRED_BINUTIL_NAMES if requirement.binutils_version else KERNEL_BINUTIL_NAMES
@@ -184,7 +187,7 @@ def _check_binutils(
                 f"Please place binutils {requirement.binutils_version} tools in {bin_dir}"
             )
     if requirement.binutils_version:
-        actual_version = _program_version(tools["ld"], library_dir)
+        actual_version = _program_version(tools["ld"], library_dir, version_runner)
         if actual_version != requirement.binutils_version:
             raise ToolchainError(
                 f"binutils version mismatch at {tools['ld']}: "
@@ -193,17 +196,23 @@ def _check_binutils(
     return tools
 
 
-def _compiler_version(executable: Path, library_dir: Path | None) -> str:
-    output = _run_version_command(executable, ["-dumpfullversion"], library_dir)
+def _compiler_version(executable: Path, library_dir: Path | None, version_runner: Callable | None = None) -> str:
+    runner = version_runner or _run_version_command
+    try:
+        output = runner(executable, ["-dumpfullversion"], library_dir)
+    except ToolchainError:
+        # Clang and older compilers may not support this GCC-specific option.
+        output = ""
     if re.fullmatch(VERSION_PATTERN, output):
         return output
-    output = _run_version_command(executable, ["--version"], library_dir)
+    output = runner(executable, ["--version"], library_dir)
     match = re.search(VERSION_PATTERN, output)
     return match.group(0) if match else "unknown"
 
 
-def _program_version(executable: Path, library_dir: Path | None) -> str:
-    output = _run_version_command(executable, ["--version"], library_dir)
+def _program_version(executable: Path, library_dir: Path | None, version_runner: Callable | None = None) -> str:
+    runner = version_runner or _run_version_command
+    output = runner(executable, ["--version"], library_dir)
     match = re.search(VERSION_PATTERN, output)
     return match.group(0) if match else "unknown"
 
@@ -221,6 +230,8 @@ def _run_version_command(executable: Path, args: list[str], library_dir: Path | 
             text=True,
             env=env,
         )
-    except (OSError, subprocess.CalledProcessError):
-        return "unknown"
+    except subprocess.CalledProcessError as exc:
+        raise ToolchainError(f"tool version command failed: {executable}: {exc.stdout or exc}") from exc
+    except OSError as exc:
+        raise ToolchainError(f"cannot execute tool version command: {executable}: {exc}") from exc
     return result.stdout.strip()

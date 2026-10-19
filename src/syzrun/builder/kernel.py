@@ -11,6 +11,7 @@ from ..metadata import Vulnerability
 from ..runtime_profile import RuntimeProfile
 from ..utils.command import CommandError, run
 from ..utils.git import ensure_mirror_commit, ensure_worktree_commit
+from .container import ContainerBuild
 from .toolchain import Toolchain, ensure_toolchain, make_jobs, target_from_arch
 
 DEFAULT_LINUX_REPO = "https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git"
@@ -49,8 +50,16 @@ class KernelBuilder:
         self.toolchain: Toolchain | None = None
 
     def build(self) -> KernelArtifacts:
+        self.container = ContainerBuild.from_environment(
+            self.runtime_profile.build_env, self.timeout, getattr(self.runtime_profile, "kernel_build_image", None),
+        )
         self.toolchain = ensure_toolchain(
             self.vuln.crash.compiler_description,
+            version_runner=self.container.version,
+        )
+        self._log_build_tools()
+        self.container = self.container.configure_helper_warnings(
+            self.toolchain.root, self.toolchain.library_dir, self.log_build,
         )
         self._ensure_mirror()
         self._ensure_tree()
@@ -94,7 +103,7 @@ class KernelBuilder:
             raise RuntimeError("kernel toolchain was not prepared")
         env = self.toolchain.environment()
         env.update(self.runtime_profile.build_env)
-        run(
+        self._run_make(
             [
                 "make",
                 f"ARCH={self.target.kernel_arch}",
@@ -113,7 +122,7 @@ class KernelBuilder:
         env = self.toolchain.environment()
         env.update(self.runtime_profile.build_env)
         jobs = make_jobs()
-        run(
+        self._run_make(
             [
                 "make",
                 f"ARCH={self.target.kernel_arch}",
@@ -131,6 +140,47 @@ class KernelBuilder:
         bz_image = self.layout.linux_tree / "arch" / "x86" / "boot" / "bzImage"
         if not bz_image.is_file():
             raise FileNotFoundError(f"kernel build did not produce bzImage: {bz_image}")
+
+    def _run_make(self, args: list[str], *, cwd: Path, env: dict[str, str],
+                  timeout: int | None, log_path: Path) -> None:
+        if self.toolchain is None:
+            raise RuntimeError("kernel toolchain was not prepared")
+        container = getattr(self, "container", None)
+        if container is None:
+            container = ContainerBuild.from_environment(
+                self.runtime_profile.build_env, self.timeout, getattr(self.runtime_profile, "kernel_build_image", None),
+            )
+        args = container.make_command(args, self.toolchain.root, self.toolchain.library_dir, cwd)
+        run(args, cwd=cwd, env=env, timeout=timeout, log_path=log_path)
+
+    def _log_build_tools(self) -> None:
+        if self.toolchain is None:
+            raise RuntimeError("kernel toolchain was not prepared")
+        # Arguments carry paths literally; never interpolate paths into shell code.
+        script = '''
+set -eu
+printf 'Kernel build image: %s\n' "$3"
+printf 'Kernel compiler: %s\n' "$1"
+"$1" --version
+printf 'Kernel linker: %s\n' "$2"
+"$2" --version
+printf 'Build helper compiler: /usr/bin/gcc -B/usr/bin/\n'
+/usr/bin/gcc -B/usr/bin/ --version
+printf 'Build helper C++ compiler: /usr/bin/g++ -B/usr/bin/\n'
+/usr/bin/g++ -B/usr/bin/ --version
+printf 'Build helper assembler selected by gcc: '
+/usr/bin/gcc -B/usr/bin/ -print-prog-name=as
+printf 'Build helper linker selected by gcc: '
+/usr/bin/gcc -B/usr/bin/ -print-prog-name=ld
+/usr/bin/ld --version
+/usr/bin/ar --version
+'''
+        args = self.container.command(
+            ["/bin/sh", "-ec", script, "build-tools", str(self.toolchain.cc),
+             str(self.toolchain.tools.get("ld", Path("/usr/bin/ld"))), self.container.image],
+            self.toolchain.root, self.toolchain.library_dir,
+        )
+        run(args, timeout=self.timeout, log_path=self.log_build)
 
 
 def apply_external_patch(kernel_tree: Path, patch_file: Path, log_path: Path, timeout: int | None) -> None:

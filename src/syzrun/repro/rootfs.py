@@ -12,6 +12,8 @@ class Rootfs:
     image: Path
     ssh_key: Path
     ssh_user: str
+    interface: str = "virtio"
+    root_device: str = "/dev/vda"
 
 
 class RootfsLocator:
@@ -38,7 +40,13 @@ class RootfsLocator:
                 f"SSH private key not found: {ssh_key}. Configure rootfs.ssh_key for this vulnerability "
                 "or run scripts/create_rootfs.sh"
             )
-        return Rootfs(image=image.resolve(), ssh_key=ssh_key.resolve(), ssh_user=ssh_user)
+        return Rootfs(
+            image=image.resolve(),
+            ssh_key=ssh_key.resolve(),
+            ssh_user=ssh_user,
+            interface=profile.interface if profile else "virtio",
+            root_device=profile.root_device if profile else "/dev/vda",
+        )
 
 
 def _configured_path(profile: str | None, default: Path, work_dir: Path) -> Path:

@@ -28,6 +28,7 @@ class Verdict:
 
 
 PREFIX = r"^\s*(?:\[[^\]\r\n]*\]\s*)*"
+UBSAN_START = re.compile(PREFIX + r"(?:BUG:\s+)?UBSAN:\s+[a-z][a-z0-9-]*", re.I)
 REPORT_STARTS = (
     ("MEMORY_LEAK", re.compile(PREFIX + r"BUG:\s+memory leak\b", re.I)),
     ("KASAN", re.compile(PREFIX + r"BUG:\s+KASAN:", re.I)),
@@ -41,6 +42,7 @@ REPORT_STARTS = (
     ("OOPS", re.compile(PREFIX + r"Oops:", re.I)),
     ("PANIC", re.compile(PREFIX + r"(?:Kernel panic - not syncing:|panic:)", re.I)),
     ("BUG", re.compile(PREFIX + r"(?:kernel BUG at\b|BUG:)", re.I)),
+    ("UBSAN", UBSAN_START),
 )
 REPORT_END = re.compile(r"(?:---\[\s*end (?:trace|Kernel panic)\b.*\]---|Rebooting in\b)", re.I)
 SEPARATOR = re.compile(PREFIX + r"=+\s*$")
@@ -52,9 +54,10 @@ SANITIZER_SUBTYPE = re.compile(r"BUG:\s+(?:KASAN|KMSAN):\s+([a-z][a-z-]*)", re.I
 REPORTING = {
     "at", "dump_stack", "__dump_stack", "panic", "__warn", "report_bug", "fixup_bug", "do_error_trap",
     "do_invalid_op", "invalid_op", "die", "oops_begin", "oops_end", "warn_slowpath_fmt",
+    "ubsan_epilogue", "__ubsan_handle_builtin_unreachable",
 }
 GENERIC = {
-    "memcpy", "memmove", "memset", "strlen", "kfree", "kmalloc", "copy_from_user", "copy_to_user",
+    "in", "memcpy", "memmove", "memset", "strlen", "kfree", "kmalloc", "copy_from_user", "copy_to_user",
     "copy_user_enhanced_fast_string", "mutex_lock", "spin_lock", "do_syscall_64",
     "entry_SYSCALL_64_after_hwframe", "__vfs_write", "__kernel_write", "write_pipe_buf",
     "__splice_from_pipe", "splice_from_pipe", "default_file_splice_write", "do_splice_from",
@@ -63,6 +66,7 @@ GENERIC = {
 GENERIC_PREFIXES = (
     "kmalloc", "kzalloc", "__kmalloc", "kmem_cache_", "slab_", "kfree", "vfree", "vunmap",
     "splice_", "__splice_", "do_splice", "__do_sys_", "__se_sys_", "__x64_sys_", "__arm64_sys_",
+    "__ubsan_handle",
 )
 COMPILER_SUFFIX = re.compile(r"\.(?:isra|constprop|part|cold)(?:\.\d+)*$")
 class ReportStream:
@@ -83,6 +87,12 @@ class ReportStream:
                 new_kind == self.kind and self.kind in {"WARNING", "GPF"}
                 and not any("Call Trace:" in item for item in self.lines) or new_kind == "PANIC"
             )
+            # syz-symbolize (and KASAN itself) can print one BUG header for
+            # every inline frame before the actual outer frame.  Those
+            # headers are one report; splitting them makes target_fingerprint
+            # select an inner helper and causes a false crashed_other result.
+            if new_kind == "KASAN" and self.kind == "KASAN":
+                continuation = continuation or all(report_type(item) == "KASAN" for item in self.lines)
             if new_kind and not continuation:
                 self._emit(reports)
                 self.kind = new_kind

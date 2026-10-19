@@ -36,6 +36,7 @@ class RuntimeProfileTests(unittest.TestCase):
         profile = load_runtime_profile(make_vuln(), Path("does-not-exist.json"))
 
         self.assertEqual(profile.build_env, {})
+        self.assertIsNone(profile.kernel_build_image)
         self.assertEqual(profile.make_args, [])
         self.assertEqual(profile.qemu_append, [])
         self.assertEqual(profile.qemu_args, [])
@@ -61,6 +62,7 @@ class RuntimeProfileTests(unittest.TestCase):
                   "vulnerabilities": {
                     "abc123": {
                       "build_env": {"KCFLAGS": "-fcf-protection=none"},
+                      "kernel-build-image": "build:v1",
                       "make_args": ["LLVM=1"],
                       "qemu_append": ["systemd.unified_cgroup_hierarchy=0"],
                       "qemu_args": ["-no-reboot"],
@@ -81,6 +83,7 @@ class RuntimeProfileTests(unittest.TestCase):
             profile = load_runtime_profile(make_vuln("abc123"), path)
 
         self.assertEqual(profile.build_env, {"KCFLAGS": "-fcf-protection=none"})
+        self.assertEqual(profile.kernel_build_image, "build:v1")
         self.assertEqual(profile.make_args, ["LLVM=1"])
         self.assertEqual(profile.qemu_append, ["systemd.unified_cgroup_hierarchy=0"])
         self.assertEqual(profile.qemu_args, ["-no-reboot"])
@@ -97,6 +100,17 @@ class RuntimeProfileTests(unittest.TestCase):
             path.write_text('{"vulnerabilities": {"abc123": {"qemu_append": "bad"}}}', encoding="utf-8")
 
             with self.assertRaises(RuntimeProfileError):
+                load_runtime_profile(make_vuln("abc123"), path)
+
+    def test_rejects_empty_kernel_build_image(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "profiles.json"
+            path.write_text(
+                '{"vulnerabilities": {"abc123": {"kernel-build-image": "  "}}}',
+                encoding="utf-8",
+            )
+
+            with self.assertRaisesRegex(RuntimeProfileError, "kernel-build-image"):
                 load_runtime_profile(make_vuln("abc123"), path)
 
     def test_rejects_incomplete_rootfs_profile(self) -> None:

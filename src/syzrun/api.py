@@ -11,6 +11,7 @@ from .builder.kernel import DEFAULT_LINUX_REPO, KernelBuilder
 from .builder.syzkaller import SyzkallerBuilder
 from .builder.toolchain import ToolchainError
 from .cache import WorkspaceLayout
+from .config import load_project_env
 from .fetcher import DEFAULT_SYZBOT_BASE_URL, fetch_artifacts
 from .metadata import Vulnerability, safe_identifier
 from .repro.monitor import ReproductionRunner
@@ -48,6 +49,7 @@ def run_vulnerability(options: RunOptions) -> RunResult:
     layout: WorkspaceLayout | None = None
 
     try:
+        load_project_env()
         current_stage = "metadata_load"
         vuln = Vulnerability.from_file(metadata_path)
         runtime_profile = load_runtime_profile(vuln)
@@ -125,6 +127,9 @@ def run_vulnerability(options: RunOptions) -> RunResult:
             failure_json=failure_json,
             error=str(exc),
         )
+    finally:
+        if layout is not None:
+            layout.cleanup_builds()
 
 
 def ensure_kernel_source(

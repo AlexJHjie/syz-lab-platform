@@ -19,10 +19,13 @@ class RootfsProfile:
     image: str
     ssh_key: str
     ssh_user: str = "root"
+    interface: str = "virtio"
+    root_device: str = "/dev/vda"
 
 
 @dataclass(frozen=True)
 class RuntimeProfile:
+    kernel_build_image: str | None = None
     build_env: dict[str, str] = field(default_factory=dict)
     make_args: list[str] = field(default_factory=list)
     qemu_append: list[str] = field(default_factory=list)
@@ -59,6 +62,7 @@ def load_runtime_profile(vuln: Vulnerability, config_path: Path = DEFAULT_RUNTIM
         raise RuntimeProfileError(f"runtime profile for {vuln.vuln_id} must be an object")
 
     return RuntimeProfile(
+        kernel_build_image=_optional_nonempty_string(raw_profile, "kernel-build-image"),
         build_env=_string_map(raw_profile, "build_env"),
         make_args=_string_list(raw_profile, "make_args"),
         qemu_append=_string_list(raw_profile, "qemu_append"),
@@ -97,7 +101,7 @@ def _rootfs_profile(raw: dict[str, Any]) -> RootfsProfile | None:
     if not isinstance(value, dict):
         raise RuntimeProfileError("runtime profile field 'rootfs' must be an object")
 
-    allowed = {"image", "ssh_key", "ssh_user"}
+    allowed = {"image", "ssh_key", "ssh_user", "interface", "root_device"}
     unknown = sorted(set(value) - allowed)
     if unknown:
         raise RuntimeProfileError(f"runtime profile field 'rootfs' contains unknown fields: {', '.join(unknown)}")
@@ -107,7 +111,19 @@ def _rootfs_profile(raw: dict[str, Any]) -> RootfsProfile | None:
     ssh_user = value.get("ssh_user", "root")
     if not isinstance(ssh_user, str) or not ssh_user.strip():
         raise RuntimeProfileError("runtime profile field 'rootfs.ssh_user' must be a non-empty string")
-    return RootfsProfile(image=image, ssh_key=ssh_key, ssh_user=ssh_user)
+    interface = value.get("interface", "virtio")
+    if interface not in {"virtio", "scsi"}:
+        raise RuntimeProfileError("runtime profile field 'rootfs.interface' must be 'virtio' or 'scsi'")
+    root_device = value.get("root_device", "/dev/vda")
+    if not isinstance(root_device, str) or not root_device.strip():
+        raise RuntimeProfileError("runtime profile field 'rootfs.root_device' must be a non-empty string")
+    return RootfsProfile(
+        image=image,
+        ssh_key=ssh_key,
+        ssh_user=ssh_user,
+        interface=interface,
+        root_device=root_device,
+    )
 
 
 def _required_nonempty_string(raw: dict[str, Any], field: str) -> str:
@@ -115,4 +131,13 @@ def _required_nonempty_string(raw: dict[str, Any], field: str) -> str:
     value = raw.get(key)
     if not isinstance(value, str) or not value.strip():
         raise RuntimeProfileError(f"runtime profile field '{field}' must be a non-empty string")
+    return value
+
+
+def _optional_nonempty_string(raw: dict[str, Any], key: str) -> str | None:
+    if key not in raw:
+        return None
+    value = raw[key]
+    if not isinstance(value, str) or not value.strip():
+        raise RuntimeProfileError(f"runtime profile field '{key}' must be a non-empty string")
     return value

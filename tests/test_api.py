@@ -1,4 +1,5 @@
 import json
+import shutil
 from pathlib import Path
 import tempfile
 import unittest
@@ -6,6 +7,7 @@ from unittest import mock
 
 from syzrun.api import RunOptions, ensure_kernel_source, run_vulnerability
 from syzrun.builder.toolchain import ToolchainError
+from syzrun.cache import WorkspaceLayout
 from syzrun.metadata import Vulnerability
 from syzrun.repro.monitor import ReproResult
 from syzrun.repro.verdict import Verdict
@@ -40,6 +42,69 @@ def write_metadata(path: Path) -> None:
 
 
 class ApiTests(unittest.TestCase):
+    def test_run_cleans_builds_after_success_failure_and_interrupt(self) -> None:
+        for error in (None, RuntimeError("build failed"), KeyboardInterrupt()):
+            with self.subTest(error=error), tempfile.TemporaryDirectory() as tmp:
+                root = Path(tmp)
+                metadata = root / "vuln.json"
+                write_metadata(metadata)
+                layout = WorkspaceLayout.create(root, "abc123")
+                for directory in (layout.kernel_dir, layout.syzkaller_dir):
+                    (directory / "artifact").write_text("build")
+                preserved = [
+                    layout.input_dir / "input.json",
+                    layout.cache_dir / "cached-file",
+                ]
+                for path in preserved:
+                    path.write_text("keep")
+
+                def write_success_report(*args):
+                    self.assertTrue(layout.kernel_dir.exists())
+                    self.assertTrue(layout.syzkaller_dir.exists())
+                    path = layout.report_dir / "report.json"
+                    path.write_text("{}")
+                    return path, layout.report_dir / "report.md"
+
+                with (
+                    mock.patch("syzrun.api.fetch_artifacts"),
+                    mock.patch("syzrun.api.KernelBuilder") as builder,
+                    mock.patch("syzrun.api.SyzkallerBuilder"),
+                    mock.patch("syzrun.api.ReproductionRunner") as runner,
+                    mock.patch("syzrun.api.RunReport.create"),
+                    mock.patch("syzrun.api.write_report", side_effect=write_success_report),
+                    mock.patch("syzrun.api.logging.exception"),
+                ):
+                    builder.return_value.build.side_effect = error
+                    runner.return_value.run.return_value.verdict.status = "reproduced"
+                    if isinstance(error, KeyboardInterrupt):
+                        with self.assertRaises(KeyboardInterrupt):
+                            run_vulnerability(RunOptions(metadata=metadata, work_dir=root))
+                    else:
+                        result = run_vulnerability(RunOptions(metadata=metadata, work_dir=root))
+                        report = result.failure_json if error else result.report_json
+                        self.assertTrue(report.is_file())
+                self.assertFalse(layout.kernel_dir.exists())
+                self.assertFalse(layout.syzkaller_dir.exists())
+                self.assertTrue(layout.logs_dir.is_dir())
+                for path in preserved:
+                    self.assertEqual(path.read_text(), "keep")
+
+    def test_cleanup_failure_does_not_stop_other_directory_cleanup(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            layout = WorkspaceLayout.create(Path(tmp), "abc123")
+            rmtree = shutil.rmtree
+
+            def remove(path):
+                if path == layout.kernel_dir:
+                    raise PermissionError("permission denied")
+                rmtree(path)
+
+            with mock.patch("syzrun.cache.shutil.rmtree", side_effect=remove):
+                with self.assertLogs(level="WARNING"):
+                    layout.cleanup_builds()
+            self.assertTrue(layout.kernel_dir.exists())
+            self.assertFalse(layout.syzkaller_dir.exists())
+
     def test_run_vulnerability_returns_structured_success(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)

@@ -13,17 +13,19 @@
 
 ## 首次安装
 
-在项目根目录执行：
+在项目根目录执行 `start.sh`，一键安装宿主机依赖、全部精确工具链和各类 QEMU rootfs：
 
 ```bash
-./scripts/install_ubuntu_deps.sh
-conda env create -f environment.yml
-conda activate platform
+./scripts/start.sh all
 ```
 
-若 Conda 环境已存在：
+安装过程需要 `sudo` 权限。各步骤依次执行，某一步失败后会继续执行后续步骤，最后汇总失败项；存在失败项时返回非零退出码。
+若工具链下载涉及私有 GitHub Release，需提前设置具有只读权限的 `GITHUB_TOKEN`。
+
+随后创建并激活 Python 环境：
 
 ```bash
+conda env create -f environment.yml
 conda activate platform
 python -m pip install -e .
 ```
@@ -35,33 +37,10 @@ syzrun --help
 syzrun run --help
 ```
 
-### 准备精确工具链
-
-内核必须使用元数据 `compiler-description` 指定的精确编译器版本。安装清单中的全部工具链，或只安装一个：
-
-```bash
-./scripts/setup_toolchains.sh
-./scripts/setup_toolchains.sh gcc-10.2.1-binutils-2.35.2
-```
-
-工具链保存在 `toolchains/<工具链名称>/`。私有 GitHub Release 资源需要只读令牌：
-
-```bash
-GITHUB_TOKEN="$(gh auth token)" ./scripts/setup_toolchains.sh
-```
-
-可安装项见 `configs/toolchains.lock.json`。`syzrun run` 只检查工具链，不会自动下载或回退到系统编译器。
-
-### 创建 QEMU rootfs
-
-首次运行前必须创建普通 rootfs 和固件 rootfs：
-
-```bash
-./scripts/create_rootfs.sh
-./scripts/create_rootfs-firmware.sh
-```
-
-两个命令均需要 `sudo`，分别在 `work/cache/rootfs/` 和 `work/cache/rootfs-firmware/` 下生成 `rootfs.img` 与 SSH 密钥。固件镜像用于依赖 Atheros AR9271 固件的漏洞，并由 `configs/vulnerabilities.json` 自动选择。
+工具链保存在 `toolchains/<工具链名称>/`，可安装项见 `configs/toolchains.lock.json`。
+内核必须使用元数据 `compiler-description` 指定的精确编译器版本；`syzrun run` 只检查工具链，不会自动下载或回退到系统编译器。
+各类 rootfs 默认保存在 `work/cache/` 下，由 `configs/vulnerabilities.json` 按漏洞选择。
+运行前还需按下文配置内核构建容器镜像。
 
 默认启用 KVM。确认当前用户可访问 `/dev/kvm`；若无 KVM，可使用较慢的软件虚拟化：
 
@@ -86,6 +65,18 @@ crash-report-link
 顶层建议提供 `id`、`title` 和 `display-title`；`id` 用作运行目录名。
 
 ### 2. 复现漏洞
+
+所有 case 的内核均使用容器构建；必须配置构建镜像。默认使用第二版镜像，基于 Ubuntu 24.04 LTS：
+
+```bash
+docker build -t syzrun-kernel-build:v2 containers/kernel-build-v2
+cp .env.example .env
+# 在 .env 中配置 PLATFORM_KERNEL_BUILD_IMAGE=syzrun-kernel-build:v2
+```
+
+第一版 Ubuntu 18.04 镜像保留在 `containers/kernel-build-v1`，用于需要旧用户态的内核；
+v1 中的旧 SELinux 头文件检查不适用于 Ubuntu 24.04，因此 v2 不包含该检查。
+如终端已导出 `PLATFORM_KERNEL_BUILD_IMAGE`，需同步更新或取消该变量，才能使用 `.env` 中的 v2 配置。
 
 ```bash
 syzrun run /path/to/vulnerability.json \
@@ -114,6 +105,9 @@ syzrun run /path/to/vulnerability.json \
 不传 `--patch` 用于确认原始漏洞；传入补丁后可检查目标崩溃是否消失。
 
 ### 4. 查看结果
+
+每个 case 结束后（包括失败或 Ctrl+C 中断），自动删除 `work/runs/<id>/kernel/` 和
+`work/runs/<id>/syzkaller/`，保留输入、日志、报告及共享缓存。再次执行该 case 时会重新构建。
 
 假设漏洞 ID 为 `<id>`：
 
@@ -152,8 +146,6 @@ work/
 执行失败时生成 `work/runs/<id>/failure.json`。诊断时优先查看同目录下的 `logs/`。
 
 ## 运行配置
-
-`configs/vulnerabilities.json` 可按漏洞 ID 设置 `build_env`、`make_args`、`qemu_append`、`qemu_args`、`repro_env`、`execprog_args` 和专用 `rootfs`。其中 rootfs 相对路径以 `--work-dir` 为基准。
 
 常用环境变量：
 

@@ -41,6 +41,17 @@ WARNING: CPU: 1 PID: 2 at include/linux/swapops.h:323 change_protection+0x16e9/0
             CrashFingerprint("KASAN", "use-after-free", ("first", "second", "third", "fourth", "fifth")),
         )
 
+    def test_kasan_inline_headers_are_one_report(self) -> None:
+        text = """BUG: KASAN: null-ptr-deref in instrument_atomic_read_write include/linux/instrumented.h:101 [inline]
+BUG: KASAN: null-ptr-deref in atomic_inc include/linux/atomic/atomic-instrumented.h:181 [inline]
+BUG: KASAN: null-ptr-deref in __pm_runtime_resume+0x154/0x180 drivers/base/power/runtime.c:1105
+Write of size 4 at addr 0000000000000388
+==================================================================
+"""
+        reports = split_reports(text)
+        self.assertEqual(len(reports), 1)
+        self.assertIn("__pm_runtime_resume", reports[0].fingerprint.functions)
+
     def test_kasan_subtype_is_extracted_and_must_not_conflict(self) -> None:
         target = CrashFingerprint("KASAN", "use-after-free", ("target_fn",))
         matching = "BUG: KASAN: use-after-free in target_fn+0x1/0x2\n"

@@ -1,9 +1,133 @@
 {
   "vulnerabilities": {
+    "4649ea695ca98903ae82280a3b7aa97dbeb7fd07": {
+      "qemu_append": ["no-kvmapf"]
+    },
+    "9b857c714d3e890900acbe48172866a93ab8589a": {
+      "qemu_append": ["no-kvmapf"]
+    },
+    "fc06b7648458c074fcb68b09007fdc1877827791": {
+      "qemu_append": ["no-kvmapf"]
+    },
+    "44fa54548362cb84e26da7c1bbd356c86c54f36d": {
+      "kernel-build-image": "syzrun-kernel-build:v1",
+      "qemu_append": [
+        "systemd.unified_cgroup_hierarchy=0"
+      ]
+    },
+    "bf967d2c5ba62946c61152534c8b84823d848f05": {
+      "kernel-build-image": "syzrun-kernel-build:v1",
+      "qemu_append": [
+        "systemd.unified_cgroup_hierarchy=0"
+      ]
+    },
+    "64bdf1f25f8db3d754e7b56c4d0f63a17edd8839": {
+      "kernel-build-image": "syzrun-kernel-build:v1",
+      "qemu_append": [
+        "systemd.unified_cgroup_hierarchy=0"
+      ]
+    },
+    "c4fd25bc9502e9924e2b0850151cbbf707fb2c31": {
+      "kernel-build-image": "syzrun-kernel-build:v1",
+      "qemu_append": [
+        "systemd.unified_cgroup_hierarchy=0"
+      ]
+    },
+    "0264f823322ea8600fbe3fb7e9e016569ca542d8": {
+      "kernel-build-image": "syzrun-kernel-build:v1",
+      "qemu_append": [
+        "systemd.unified_cgroup_hierarchy=0"
+      ]
+    },
+    "0cd33d8e114be941da0773f8980488e1ca71ed58": {
+      "kernel-build-image": "syzrun-kernel-build:v1",
+      "qemu_append": [
+        "systemd.unified_cgroup_hierarchy=0"
+      ]
+    },
+    "0ec05481e31f2772a2c6f16aecb38f48467da26e": {
+      "kernel-build-image": "syzrun-kernel-build:v1",
+      "qemu_append": [
+        "systemd.unified_cgroup_hierarchy=0"
+      ]
+    },
+    "17d5de7f1fcab794cb8c40032f893f52de899324": {
+      "kernel-build-image": "syzrun-kernel-build:v1",
+      "qemu_append": [
+        "systemd.unified_cgroup_hierarchy=0"
+      ]
+    },
+    "1c77e2dda8a84073f16043ab0978a6ad5b820f34": {
+      "kernel-build-image": "syzrun-kernel-build:v1",
+      "qemu_append": [
+        "systemd.unified_cgroup_hierarchy=0"
+      ]
+    },
+    "316ecfd071c79a4654861c1cf6a93d4ac0693de0": {
+      "kernel-build-image": "syzrun-kernel-build:v1",
+      "qemu_append": [
+        "systemd.unified_cgroup_hierarchy=0"
+      ]
+    },
+    "6408a8ba0fa0e3940c5c2dfa40e808cbf4228689": {
+      "kernel-build-image": "syzrun-kernel-build:v1",
+      "qemu_append": [
+        "systemd.unified_cgroup_hierarchy=0"
+      ]
+    },
+    "6e5e224656a49e9167742ed797391bad751c812a": {
+      "kernel-build-image": "syzrun-kernel-build:v1",
+      "qemu_append": [
+        "systemd.unified_cgroup_hierarchy=0"
+      ]
+    },
+    "75fe6df4627d7e49fca2e0a73dfc12f5fac4588f": {
+      "kernel-build-image": "syzrun-kernel-build:v1",
+      "qemu_append": [
+        "systemd.unified_cgroup_hierarchy=0"
+      ]
+    },
+    "89740d8d8416726adeba5953543037142b3b20be": {
+      "kernel-build-image": "syzrun-kernel-build:v1",
+      "qemu_append": [
+        "systemd.unified_cgroup_hierarchy=0"
+      ]
+    },
+    "a5954455fcfa51c29ca2ab55b203076337e1c770": {
+      "kernel-build-image": "syzrun-kernel-build:v1",
+      "qemu_append": [
+        "systemd.unified_cgroup_hierarchy=0"
+      ]
+    },
+    "a8afc55e6cd0cac79fd97a5c0d2272751dc558fc": {
+      "kernel-build-image": "syzrun-kernel-build:v1",
+      "qemu_append": [
+        "systemd.unified_cgroup_hierarchy=0"
+      ]
+    },
+    "b5095bfec44ec84213bac54742a82483aad578ce": {
+      "kernel-build-image": "syzrun-kernel-build:v1",
+      "qemu_append": [
+        "systemd.unified_cgroup_hierarchy=0"
+      ]
+    },
+    "e0640a911365faa499433155c3d5d5b674b36a83": {
+      "kernel-build-image": "syzrun-kernel-build:v1",
+      "qemu_append": [
+        "systemd.unified_cgroup_hierarchy=0"
+      ]
+    },
+    "feb49e622c3d0ca5ff931e55e2310f96a4d0231e": {
+      "kernel-build-image": "syzrun-kernel-build:v1",
+      "qemu_append": [
+        "systemd.unified_cgroup_hierarchy=0"
+      ]
+    },
     "0084fd109a7a10011e183a357715c91cff2cacb0": {
       "build_env": {
         "KCFLAGS": "-fcf-protection=none"
       },
+      "kernel-build-image": "syzrun-kernel-build:v1",
       "qemu_append": [
         "systemd.unified_cgroup_hierarchy=0"
       ]
@@ -25,6 +149,7 @@
       ]
     },
     "2db2545ff94291fabe4a5dd4ee182db44ef35d4b": {
+      "kernel-build-image": "syzrun-kernel-build:v1",
       "qemu_append": [
         "panic_on_warn=0"
       ],
@@ -49,6 +174,7 @@
       ]
     },
     "f7649aa07ffca82dc93dc5cebc00c665849f5138": {
+      "kernel-build-image": "syzrun-kernel-build:v1",
       "make_args": [
         "HOSTCFLAGS=-Wno-error",
         "WERROR=0"
@@ -60,6 +186,176 @@
         "image": "cache/rootfs-legacy-env/rootfs.img",
         "ssh_key": "cache/rootfs-legacy-env/id_rsa"
       }
+    },
+    "093e7092e01bed192b564b04528826cc6f1dbf91": {
+      "kernel-build-image": "syzrun-kernel-build:v1",
+      "qemu_append": [
+        "systemd.unified_cgroup_hierarchy=0"
+      ]
+    },
+    "12be9aa373be9d8727cdd172f190de39528a413a": {
+      "qemu_append": [
+        "systemd.unified_cgroup_hierarchy=0"
+      ]
+    },
+    "17535f4bf5b322437f7c639b59161ce343fc55a9": {
+      "kernel-build-image": "syzrun-kernel-build:v1",
+      "qemu_append": [
+        "systemd.unified_cgroup_hierarchy=0"
+      ]
+    },
+    "1bc76a5779300075e3466a0e2abcd753df212779": {
+      "qemu_append": [
+        "systemd.unified_cgroup_hierarchy=0"
+      ]
+    },
+    "1bef50bdd9622a1969608d1090b2b4a588d0c6ac": {
+      "qemu_append": [
+        "systemd.unified_cgroup_hierarchy=0",
+        "panic_on_warn=0"
+      ]
+    },
+    "52eac4b79cfb13db9907627c1afc185252168cdc": {
+      "qemu_append": [
+        "systemd.unified_cgroup_hierarchy=0"
+      ]
+    },
+    "59997d828822e7dc674e4715a5bd454d9dc1742f": {
+      "qemu_append": [
+        "systemd.unified_cgroup_hierarchy=0"
+      ]
+    },
+    "5d48b50ed679f22d7d4a4b578da8559d34b104ac": {
+      "qemu_append": [
+        "systemd.unified_cgroup_hierarchy=0"
+      ]
+    },
+    "6922c8c31f1fdd120d1cef3f58b319b6dd1d8c00": {
+      "qemu_append": [
+        "systemd.unified_cgroup_hierarchy=0"
+      ]
+    },
+    "6d600a0ff2cc263bc4edbddf0f597e456e303978": {
+      "kernel-build-image": "syzrun-kernel-build:v1",
+      "rootfs": {
+        "image": "cache/rootfs-minimal/rootfs.img",
+        "ssh_key": "cache/rootfs-minimal/id_rsa"
+      }
+    },
+    "6e96f5bd56bfecdaa0bfeaf2695a25cc80bfbd9a": {
+      "qemu_append": [
+        "systemd.unified_cgroup_hierarchy=0"
+      ]
+    },
+    "71f39cec3c870f687b26c5595d7a8608849f37ba": {
+      "qemu_append": [
+        "systemd.unified_cgroup_hierarchy=0"
+      ]
+    },
+    "7d0e7e183df07b0c306cca5dfd022a64c302dd4f": {
+      "qemu_append": [
+        "systemd.unified_cgroup_hierarchy=0",
+        "audit=1"
+      ],
+      "rootfs": {
+        "image": "cache/rootfs-rsyslog/rootfs.img",
+        "ssh_key": "cache/rootfs-rsyslog/id_rsa",
+        "ssh_user": "root"
+      }
+    },
+    "9e18fe37d8af37d2b7da77206058aa78c2a1a9df": {
+      "qemu_append": [
+        "nomodeset"
+      ]
+    },
+    "b5d799a2cc619607ed6e322f97f78eaf534451e1": {
+      "kernel-build-image": "syzrun-kernel-build:v1",
+      "qemu_append": [
+        "systemd.unified_cgroup_hierarchy=0"
+      ]
+    },
+    "b72d20070b541e44e5b91326de68930e51654c81": {
+      "qemu_append": [
+        "systemd.unified_cgroup_hierarchy=0"
+      ]
+    },
+    "b7575418eb496c7def8d76caff2c1c8755682e90": {
+      "kernel-build-image": "syzrun-kernel-build:v1",
+      "qemu_append": [
+        "systemd.unified_cgroup_hierarchy=0"
+      ]
+    },
+    "d5cd7bc74de1e50a5139d45189395427cc5c3f63": {
+      "execprog_args": [
+        "-disable=cgroups"
+      ]
+    },
+    "e84ebd53b11608595ca4fd595d48ae9ddce9cf11": {
+      "kernel-build-image": "syzrun-kernel-build:v1",
+      "qemu_append": [
+        "systemd.unified_cgroup_hierarchy=0"
+      ]
+    },
+    "e9f526f59d5b25decd3b91d4270b5da2aa23c8f6": {
+      "kernel-build-image": "syzrun-kernel-build:v1",
+      "qemu_append": [
+        "systemd.unified_cgroup_hierarchy=0"
+      ]
+    },
+    "ec324fb855382395411b32d87a6eafd5da721ecc": {
+      "kernel-build-image": "syzrun-kernel-build:v1",
+      "qemu_append": [
+        "systemd.unified_cgroup_hierarchy=0"
+      ]
+    },
+    "f9cfa5c5564ffc453258d835293bf6e9881c5b1c": {
+      "kernel-build-image": "syzrun-kernel-build:v1",
+      "qemu_append": [
+        "systemd.unified_cgroup_hierarchy=0"
+      ]
+    },
+    "26cb120b31cd24d984fc16da67f50fb375c432a7": {
+      "kernel-build-image": "syzrun-kernel-build:v1",
+      "qemu_append": [
+        "systemd.unified_cgroup_hierarchy=0"
+      ]
+    },
+    "35ca150acc791b7283bb643a0edbbc185aa4a69e": {
+      "qemu_append": [
+        "systemd.unified_cgroup_hierarchy=0"
+      ]
+    },
+    "85eccd45a5b1d5a43a6808e6139a4c814052ccb2": {
+      "qemu_append": [
+        "systemd.unified_cgroup_hierarchy=0"
+      ]
+    },
+    "fea1767458f80cd02b783a4a317e76c229ffddab": {
+      "kernel-build-image": "syzrun-kernel-build:v1",
+      "qemu_append": [
+        "systemd.unified_cgroup_hierarchy=0"
+      ]
+    },
+    "8dba39eccdf108d625bf6acb2bea1aa0c7e1fd61": {
+      "qemu_append": [
+        "systemd.unified_cgroup_hierarchy=0"
+      ]
+    },
+    "990d1ea15a57bc6fa79779c7c6d36be2a423bc06": {
+      "qemu_append": [
+        "systemd.unified_cgroup_hierarchy=0"
+      ]
+    },
+    "19526c104e66c633a05949201c4c09a3ec8c5644": {
+      "rootfs": {
+        "image": "cache/rootfs-scsi/rootfs.img",
+        "ssh_key": "cache/rootfs-scsi/id_rsa",
+        "interface": "scsi",
+        "root_device": "/dev/sda1"
+      },
+      "qemu_append": [
+        "systemd.unified_cgroup_hierarchy=0"
+      ]
     }
   }
 }

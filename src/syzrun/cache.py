@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 import shutil
 from dataclasses import dataclass
 from pathlib import Path
@@ -33,6 +34,16 @@ class WorkspaceLayout:
         if self.logs_dir.exists():
             shutil.rmtree(self.logs_dir)
         ensure_dir(self.logs_dir)
+
+    def cleanup_builds(self) -> None:
+        for path in (self.kernel_dir, self.syzkaller_dir):
+            try:
+                shutil.rmtree(path)
+                logging.info("removed build directory: %s", path)
+            except FileNotFoundError:
+                pass
+            except OSError as exc:
+                logging.warning("could not remove build directory %s: %s", path, exc)
 
     @property
     def cache_dir(self) -> Path:

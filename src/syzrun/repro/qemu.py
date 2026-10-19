@@ -126,12 +126,12 @@ class QemuVM:
     def _qemu_args(self) -> list[str]:
         append_items = [
             "console=ttyS0",
-            "root=/dev/vda",
+            f"root={self.rootfs.root_device}",
             "rw",
             "earlyprintk=serial",
             "net.ifnames=0",
             "oops=panic",
-            "panic_on_warn=1",
+            "panic_on_warn=0",
             "panic=0",
             "kasan_multi_shot=1",
         ]
@@ -147,8 +147,6 @@ class QemuVM:
             str(self.kernel.bz_image),
             "-append",
             append,
-            "-drive",
-            f"file={self.rootfs.image},format=raw,if=virtio",
             "-netdev",
             f"user,id=net0,hostfwd=tcp:127.0.0.1:{self.ssh_port}-:22",
             "-device",
@@ -158,6 +156,19 @@ class QemuVM:
         ]
         if Path("/dev/kvm").exists() and not os.environ.get("PLATFORM_DISABLE_KVM"):
             args[1:1] = ["-enable-kvm", "-cpu", "host"]
+        if self.rootfs.interface == "scsi":
+            args.extend(
+                [
+                    "-drive",
+                    f"file={self.rootfs.image},format=raw,if=none,id=hd0",
+                    "-device",
+                    "virtio-scsi-pci,id=scsi",
+                    "-device",
+                    "scsi-hd,drive=hd0",
+                ]
+            )
+        else:
+            args.extend(["-drive", f"file={self.rootfs.image},format=raw,if=virtio"])
         args.extend(self.runtime_profile.qemu_args)
         return args
 

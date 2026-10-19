@@ -12,7 +12,9 @@ sudo apt-get install -y \
   e2fsprogs \
   flex \
   libelf-dev \
+  libffi7 \
   libssl-dev \
+  libz3-4 \
   qemu-system-x86 \
   util-linux
 

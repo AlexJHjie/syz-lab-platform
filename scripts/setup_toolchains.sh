@@ -101,13 +101,23 @@ PY
 
 compiler_version() {
   local executable="$1"
-  local version
+  local version output
+  local library_dir="$(dirname -- "${executable}")/../lib"
+  if [[ -d "${library_dir}" ]]; then
+    local LD_LIBRARY_PATH="${library_dir}${LD_LIBRARY_PATH:+:${LD_LIBRARY_PATH}}"
+    export LD_LIBRARY_PATH
+  fi
   version="$("${executable}" -dumpfullversion 2>/dev/null || true)"
   if [[ "${version}" =~ ^[0-9]+\.[0-9]+(\.[0-9]+)?$ ]]; then
     echo "${version}"
     return
   fi
-  "${executable}" --version 2>/dev/null |
+  if ! output="$("${executable}" --version 2>&1)"; then
+    echo "error: cannot execute compiler: ${executable}" >&2
+    printf '%s\n' "${output}" >&2
+    return 1
+  fi
+  printf '%s\n' "${output}" |
     head -n 1 |
     grep -oE '[0-9]+\.[0-9]+(\.[0-9]+)?' |
     head -n 1 || true

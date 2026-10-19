@@ -69,7 +69,15 @@ def symbolize_crash(
 
         env = os.environ.copy()
         if kernel.toolchain:
-            env.update(kernel.toolchain.environment())
+            # The exact build toolchain may have been downloaded on a newer
+            # distro and its unprefixed addr2line can require a newer glibc
+            # than the host running syz-symbolize.  Symbolization is a host
+            # operation: keep the host PATH/loader first and append the build
+            # toolchain only as a fallback for target-prefixed utilities.
+            toolchain_env = kernel.toolchain.environment()
+            host_path = env.get("PATH", "")
+            toolchain_path = toolchain_env.get("PATH", "")
+            env["PATH"] = os.pathsep.join(part for part in (host_path, toolchain_path) if part)
         command = [str(symbolizer), "-os", "linux"]
         if _symbolizer_supports_arch(symbolizer):
             command.extend(["-arch", target_arch])
@@ -94,6 +102,8 @@ def symbolize_crash(
         if result.returncode != 0:
             detail = result.stderr.strip() or result.stdout.strip()
             raise RuntimeError(f"syz-symbolize failed ({result.returncode}): {detail}")
+        if re.search(r"failed to symbolize(?: report)?", result.stderr, re.I):
+            raise RuntimeError(f"syz-symbolize could not symbolize report: {result.stderr.strip()}")
 
         if not extract_target:
             output_path.write_text(result.stdout, encoding="utf-8", errors="replace")
