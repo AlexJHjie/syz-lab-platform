@@ -7,7 +7,7 @@ failed=0
 total=0
 
 shopt -s nullglob
-cases=(../KBenshSYZ/*.json)
+cases=(/path/to/KBenchSYZ/*.json)
 total=${#cases[@]}
 
 # 从中断点时启用

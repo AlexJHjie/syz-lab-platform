@@ -19,7 +19,7 @@ for i in "${!ids[@]}"; do
     echo "[$((i+1))/$total] Running: $id"
 
     # 执行任务，同时打印并保存输出
-    syzrun run "../KBenshSYZ/${id}.json" \
+    syzrun run "/path/to/KBenchSYZ/${id}.json" \
         --work-dir work --timeout 30m \
         2>&1 | tee "$log_file"
 

@@ -37,11 +37,6 @@ syzrun --help
 syzrun run --help
 ```
 
-工具链保存在 `toolchains/<工具链名称>/`，可安装项见 `configs/toolchains.lock.json`。
-内核必须使用元数据 `compiler-description` 指定的精确编译器版本；`syzrun run` 只检查工具链，不会自动下载或回退到系统编译器。
-各类 rootfs 默认保存在 `work/cache/` 下，由 `configs/vulnerabilities.json` 按漏洞选择。
-运行前还需按下文配置内核构建容器镜像。
-
 默认启用 KVM。确认当前用户可访问 `/dev/kvm`；若无 KVM，可使用较慢的软件虚拟化：
 
 ```bash
@@ -50,38 +45,44 @@ export PLATFORM_DISABLE_KVM=1
 
 ## 操作指南
 
-### 1. 准备元数据
+### 1. 复现漏洞
 
-输入为单个 JSON 文件。程序读取 `crashes[0]`，其中必须包含：
-
-```text
-syz-reproducer          kernel-config
-kernel-source-git       kernel-source-commit
-syzkaller-git           syzkaller-commit
-compiler-description    architecture
-crash-report-link
-```
-
-顶层建议提供 `id`、`title` 和 `display-title`；`id` 用作运行目录名。
-
-### 2. 复现漏洞
-
-所有 case 的内核均使用容器构建；必须配置构建镜像。默认使用第二版镜像，基于 Ubuntu 24.04 LTS：
+所有 case 的内核均使用容器构建；必须配置构建镜像。第一版 Ubuntu 18.04 镜像保留在 `containers/kernel-build-v1`，用于需要旧用户态的内核。默认使用第二版镜像，基于 Ubuntu 24.04 LTS：
 
 ```bash
+# 给当前用户配置 Docker 和 KVM 权限
+sudo usermod -aG docker,kvm "$USER"
+# 退出 SSH，然后重新连接服务器，使组权限生效
+exit
+```
+
+重新连接后执行：
+
+```bash
+conda activate platform
+
+# 确认 Docker 可用
+docker info
+
+# v1、v2 镜像都需要被构建
+docker build -t syzrun-kernel-build:v1 containers/kernel-build-v1
 docker build -t syzrun-kernel-build:v2 containers/kernel-build-v2
+
 cp .env.example .env
 # 在 .env 中配置 PLATFORM_KERNEL_BUILD_IMAGE=syzrun-kernel-build:v2
 ```
 
-第一版 Ubuntu 18.04 镜像保留在 `containers/kernel-build-v1`，用于需要旧用户态的内核；
-v1 中的旧 SELinux 头文件检查不适用于 Ubuntu 24.04，因此 v2 不包含该检查。
-如终端已导出 `PLATFORM_KERNEL_BUILD_IMAGE`，需同步更新或取消该变量，才能使用 `.env` 中的 v2 配置。
+批量或单条运行漏洞复现:
 
 ```bash
-syzrun run /path/to/vulnerability.json \
-  --work-dir work \
-  --timeout 30m
+# 全部漏洞
+./run_all.sh
+
+# 指定多个漏洞
+./run_part.sh
+
+# 单条漏洞
+syzrun run /path/to/vulnerability.json --work-dir work --timeout 30m
 ```
 
 参数说明：
@@ -93,7 +94,7 @@ syzrun run /path/to/vulnerability.json \
 | `--timeout` | `30m` | 长耗时步骤上限；支持 `600`、`30m`、`2h`、`1d` |
 | `--patch` | 无 | 构建内核前应用的外部补丁 |
 
-### 3. 验证补丁
+### 2. 验证补丁
 
 ```bash
 syzrun run /path/to/vulnerability.json \
@@ -104,7 +105,7 @@ syzrun run /path/to/vulnerability.json \
 
 不传 `--patch` 用于确认原始漏洞；传入补丁后可检查目标崩溃是否消失。
 
-### 4. 查看结果
+### 3. 查看结果
 
 每个 case 结束后（包括失败或 Ctrl+C 中断），自动删除 `work/runs/<id>/kernel/` 和
 `work/runs/<id>/syzkaller/`，保留输入、日志、报告及共享缓存。再次执行该 case 时会重新构建。
