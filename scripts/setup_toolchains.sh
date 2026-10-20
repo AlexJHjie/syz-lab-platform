@@ -12,8 +12,9 @@ Usage:
   ./scripts/setup_toolchains.sh [toolchain-key ...]
 
 Install all toolchains from configs/toolchains.lock.json, or only the specified
-keys. Existing installations with matching compiler/binutils versions are
-skipped. Failed installations are summarized after all keys have been tried.
+keys. Existing installations with all required executable files are skipped.
+Compiler/binutils versions are checked in the kernel build container by syzrun,
+not on the host. Failed installations are summarized after all keys are tried.
 
 Environment:
   PLATFORM_TOOLCHAIN_MANIFEST  Use another lock manifest.
@@ -99,28 +100,21 @@ PY
 
 [[ -n "${RECORDS}" ]] || die "no toolchains are configured in ${MANIFEST}"
 
-compiler_version() {
-  local executable="$1"
-  local version output
-  local library_dir="$(dirname -- "${executable}")/../lib"
-  if [[ -d "${library_dir}" ]]; then
-    local LD_LIBRARY_PATH="${library_dir}${LD_LIBRARY_PATH:+:${LD_LIBRARY_PATH}}"
-    export LD_LIBRARY_PATH
+# Check layout and executable permissions without running target binaries.
+# Their runtime libraries and version checks belong to the build container.
+check_toolchain_layout() {
+  local root="$1"
+  local compiler="$2"
+  local binutils_version="$3"
+  [[ -f "${root}/bin/${compiler}" && -x "${root}/bin/${compiler}" ]] ||
+    die "toolchain does not contain executable bin/${compiler}: ${root}"
+  if [[ -n "${binutils_version}" ]]; then
+    local tool
+    for tool in ld as ar nm objcopy objdump readelf strip addr2line; do
+      [[ -f "${root}/bin/${tool}" && -x "${root}/bin/${tool}" ]] ||
+        die "toolchain does not contain executable bin/${tool}: ${root}"
+    done
   fi
-  version="$("${executable}" -dumpfullversion 2>/dev/null || true)"
-  if [[ "${version}" =~ ^[0-9]+\.[0-9]+(\.[0-9]+)?$ ]]; then
-    echo "${version}"
-    return
-  fi
-  if ! output="$("${executable}" --version 2>&1)"; then
-    echo "error: cannot execute compiler: ${executable}" >&2
-    printf '%s\n' "${output}" >&2
-    return 1
-  fi
-  printf '%s\n' "${output}" |
-    head -n 1 |
-    grep -oE '[0-9]+\.[0-9]+(\.[0-9]+)?' |
-    head -n 1 || true
 }
 
 install_toolchain() {
@@ -131,35 +125,15 @@ install_toolchain() {
   local url="$5"
   local expected_sha256="$6"
   local target="${TOOLCHAINS_DIR}/${key}"
-  local compiler_path="${target}/bin/${compiler}"
 
   [[ -n "${compiler}" && -n "${compiler_version}" ]] ||
     die "manifest entry ${key} is missing compiler or compiler_version"
 
-  if [[ -x "${compiler_path}" ]]; then
-    local installed_compiler_version
-    installed_compiler_version="$(compiler_version "${compiler_path}")"
-    [[ "${installed_compiler_version}" == "${compiler_version}" ]] ||
-      die "existing directory has a compiler version mismatch: ${target}; expected ${compiler_version}, got ${installed_compiler_version:-unknown}"
-    if [[ -z "${binutils_version}" ]]; then
-      echo "already installed: ${key}"
-      return
-    fi
-    local installed_binutils_version
-    installed_binutils_version="$(
-      "${target}/bin/ld" --version 2>/dev/null |
-        head -n 1 |
-        grep -oE '[0-9]+\.[0-9]+(\.[0-9]+)?' |
-        head -n 1 || true
-    )"
-    if [[ "${installed_binutils_version}" == "${binutils_version}" ]]; then
-      echo "already installed: ${key}"
-      return
-    fi
-    die "existing directory has a binutils version mismatch: ${target}; move or remove it before reinstalling"
+  if [[ -e "${target}" ]]; then
+    check_toolchain_layout "${target}" "${compiler}" "${binutils_version}"
+    echo "already installed: ${key} (versions will be checked in the build container)"
+    return
   fi
-  [[ ! -e "${target}" ]] ||
-    die "existing incomplete toolchain directory: ${target}; move or remove it before reinstalling"
 
   [[ "${expected_sha256}" =~ ^[0-9a-fA-F]{64}$ ]] ||
     die "manifest entry ${key} has no valid sha256; publish the archive and update ${MANIFEST}"
@@ -228,29 +202,7 @@ install_toolchain() {
   tar -xf "${archive}" -C "${staging}"
 
   local extracted="${staging}/${key}"
-  [[ -x "${extracted}/bin/${compiler}" ]] ||
-    die "archive does not contain executable bin/${compiler}: ${archive}"
-  local extracted_compiler_version
-  extracted_compiler_version="$(compiler_version "${extracted}/bin/${compiler}")"
-  [[ "${extracted_compiler_version}" == "${compiler_version}" ]] ||
-    die "compiler version mismatch in archive: expected ${compiler_version}, got ${extracted_compiler_version:-unknown}"
-
-  if [[ -n "${binutils_version}" ]]; then
-    local tool
-    for tool in ld as ar nm objcopy objdump readelf strip addr2line; do
-      [[ -x "${extracted}/bin/${tool}" ]] ||
-        die "archive does not contain executable bin/${tool}: ${archive}"
-    done
-    local extracted_binutils_version
-    extracted_binutils_version="$(
-      "${extracted}/bin/ld" --version 2>/dev/null |
-        head -n 1 |
-        grep -oE '[0-9]+\.[0-9]+(\.[0-9]+)?' |
-        head -n 1 || true
-    )"
-    [[ "${extracted_binutils_version}" == "${binutils_version}" ]] ||
-      die "binutils version mismatch in archive: expected ${binutils_version}, got ${extracted_binutils_version:-unknown}"
-  fi
+  check_toolchain_layout "${extracted}" "${compiler}" "${binutils_version}"
 
   mv -- "${extracted}" "${target}"
   rm -rf -- "${staging}"

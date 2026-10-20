@@ -7,8 +7,8 @@
 ## 环境要求
 
 - Ubuntu Linux、Python 3.10+
-- Conda、QEMU/KVM、Git、Go
-- GCC/Clang 及 Linux 内核构建依赖
+- Conda、Docker、QEMU/KVM、Git、Go
+- 宿主机 GCC/G++、Make（用于构建 syzkaller）；Linux 内核构建依赖由容器提供
 - 建议预留至少 30 GB 磁盘空间
 
 ## 首次安装

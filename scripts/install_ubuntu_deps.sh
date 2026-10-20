@@ -1,21 +1,17 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+# Host dependencies for syzkaller builds, QEMU and rootfs creation.
+# Kernel build dependencies and toolchain runtime libraries live in the image.
+# Docker and Go must be installed separately (see README.md).
 sudo apt-get update
 sudo apt-get install -y \
-  bc \
-  bison \
   build-essential \
   ca-certificates \
   debootstrap \
-  dwarves \
   e2fsprogs \
-  flex \
-  libelf-dev \
-  libffi7 \
-  libssl-dev \
-  libz3-4 \
   qemu-system-x86 \
-  util-linux
+  util-linux \
+  debootstrap
 
-echo "Ubuntu dependencies installed."
+echo "Ubuntu host dependencies installed."
