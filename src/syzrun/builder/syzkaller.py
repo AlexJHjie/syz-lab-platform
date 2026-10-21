@@ -77,7 +77,11 @@ class SyzkallerBuilder:
         env = {
             "CC": SYSTEM_CC,
             "CXX": SYSTEM_CXX,
-            "CFLAGS": "-Wno-error=stringop-truncation -Wno-error=array-bounds",
+            "CFLAGS": (
+                "-Wno-error=stringop-truncation "
+                "-Wno-error=array-bounds "
+                "-Wno-error=stringop-overflow"
+            ),
             "TARGETOS": "linux",
             "TARGETARCH": self.target.syzkaller_arch,
         }
