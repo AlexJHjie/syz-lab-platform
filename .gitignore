@@ -1,8 +1,8 @@
 __pycache__/
 *.py[cod]
-work/
+work/*
+!work/cache/downloads/
 toolchains/*
 !toolchains/.gitkeep
 
 .env
-/KBenchSYZ/
