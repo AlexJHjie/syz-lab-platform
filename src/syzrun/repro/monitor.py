@@ -97,8 +97,11 @@ class ReproductionRunner:
         self.kernel = kernel
         self.syzkaller = syzkaller
         self.fetched = fetched
-        self.target: CrashFingerprint = target_fingerprint(fetched.crash_report)
         self.runtime_profile = runtime_profile or RuntimeProfile.empty()
+        self.target: CrashFingerprint = target_fingerprint(
+            fetched.crash_report,
+            override=self.runtime_profile.target_crash,
+        )
         self.timeout = timeout
         self.attempt_count = attempt_count
 
@@ -223,11 +226,11 @@ class ReproductionRunner:
                 vm=vm,
                 syzkaller=self.syzkaller,
                 repro_file=self.fetched.syz_reproducer,
-                timeout=REPRO_TIMEOUT,
+                timeout=self.runtime_profile.repro_timeout,
                 env=self.runtime_profile.repro_env,
                 extra_args=self.runtime_profile.execprog_args,
             )
-            deadline = time.monotonic() + REPRO_TIMEOUT
+            deadline = time.monotonic() + self.runtime_profile.repro_timeout
 
             while time.monotonic() < deadline:
                 serial_text = qemu_scanner.read_text()
@@ -269,6 +272,13 @@ class ReproductionRunner:
 
             exit_code = stop_syz_repro(process)
             verdict = classify(self.target, logs_dir, offsets)
+            if verdict.status == "not_reproduced":
+                verdict = Verdict(
+                    "not_reproduced",
+                    None,
+                    f"repro timed out after {self.runtime_profile.repro_timeout}s (exit code {exit_code})",
+                    verdict.source_log,
+                )
             return _attempt_result(number, verdict, started, logs_dir, exit_code, remote_command, offsets)
         finally:
             if process is not None and process.poll() is None:
@@ -399,9 +409,12 @@ def _reports_from_attempt(result: AttemptResult) -> list[tuple[str, CrashReport]
 
 
 def _same_crash_kind(target: CrashFingerprint, observed: CrashFingerprint) -> bool:
-    return target.report_type == observed.report_type and (
-        not target.subtype or not observed.subtype or target.subtype == observed.subtype
-    )
+    accepted_types = target.accepted_report_types or (target.report_type,)
+    if observed.report_type not in accepted_types:
+        return False
+    if target.accepted_subtypes:
+        return observed.subtype in target.accepted_subtypes
+    return not target.subtype or not observed.subtype or target.subtype == observed.subtype
 
 
 def _summarize_attempts(attempts: list[AttemptResult]) -> Verdict:

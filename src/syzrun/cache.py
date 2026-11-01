@@ -63,7 +63,7 @@ class WorkspaceLayout:
 
     @property
     def rootfs_dir(self) -> Path:
-        return self.cache_dir / "rootfs"
+        return self.cache_dir / "rootfs" / "rootfs-base"
 
     @property
     def run_dir(self) -> Path:

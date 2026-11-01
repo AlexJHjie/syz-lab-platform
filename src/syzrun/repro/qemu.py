@@ -124,18 +124,20 @@ class QemuVM:
         ]
 
     def _qemu_args(self) -> list[str]:
-        append_items = [
-            "console=ttyS0",
-            f"root={self.rootfs.root_device}",
-            "rw",
-            "earlyprintk=serial",
-            "net.ifnames=0",
-            "oops=panic",
-            "panic_on_warn=0",
-            "panic=0",
-            "kasan_multi_shot=1",
-        ]
-        append_items.extend(self.runtime_profile.qemu_append)
+        append_items = _merge_kernel_cmdline(
+            [
+                "console=ttyS0",
+                f"root={self.rootfs.root_device}",
+                "rw",
+                "earlyprintk=serial",
+                "net.ifnames=0",
+                "oops=panic",
+                "panic_on_warn=0",
+                "panic=0",
+                "kasan_multi_shot=1",
+            ],
+            self.runtime_profile.qemu_append,
+        )
         append = " ".join(append_items)
         args: list[str] = [
             "qemu-system-x86_64",
@@ -169,8 +171,55 @@ class QemuVM:
             )
         else:
             args.extend(["-drive", f"file={self.rootfs.image},format=raw,if=virtio"])
-        args.extend(self.runtime_profile.qemu_args)
-        return args
+        return _merge_qemu_args(args, self.runtime_profile.qemu_args)
+
+
+_OVERRIDABLE_QEMU_OPTIONS = frozenset({"-m", "-smp", "-cpu", "-kernel", "-append"})
+
+
+def _merge_kernel_cmdline(base: list[str], overrides: list[str]) -> list[str]:
+    """Merge key=value kernel arguments so the profile has one final value."""
+
+    result: list[str] = []
+    positions: dict[str, int] = {}
+    for item in [*base, *overrides]:
+        key = item.split("=", 1)[0]
+        if key in positions:
+            result[positions[key]] = item
+        else:
+            positions[key] = len(result)
+            result.append(item)
+    return result
+
+
+def _merge_qemu_args(base: list[str], overrides: list[str]) -> list[str]:
+    """Apply profile QEMU options without duplicate scalar options."""
+
+    result = list(base)
+    index = 0
+    while index < len(overrides):
+        option = overrides[index]
+        if option in _OVERRIDABLE_QEMU_OPTIONS and index + 1 < len(overrides):
+            value = overrides[index + 1]
+            result = _remove_qemu_option(result, option)
+            result.extend([option, value])
+            index += 2
+            continue
+        result.append(option)
+        index += 1
+    return result
+
+
+def _remove_qemu_option(args: list[str], option: str) -> list[str]:
+    result: list[str] = []
+    index = 0
+    while index < len(args):
+        if args[index] == option:
+            index += 2
+            continue
+        result.append(args[index])
+        index += 1
+    return result
 
 
 def _free_tcp_port() -> int:

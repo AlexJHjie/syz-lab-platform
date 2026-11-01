@@ -1,0 +1,43 @@
+From 18365ebf23f3e713e5dd8e295c9a639295250f3c Mon Sep 17 00:00:00 2001
+From: Samuel Thibault <samuel.thibault@ens-lyon.org>
+Date: Mon, 6 Mar 2023 10:49:21 +0100
+Subject: [PATCH] tty: vt: protect KD_FONT_OP_GET_TALL from unbound access
+
+In ioctl(KD_FONT_OP_GET_TALL), userland tells through op->height which
+vpitch should be used to copy over the font. In con_font_get, we were
+not checking that it is within the maximum height value, and thus
+userland could make the vc->vc_sw->con_font_get(vc, &font, vpitch);
+call possibly overflow the allocated max_font_size bytes, and the
+copy_to_user(op->data, font.data, c) call possibly read out of that
+allocated buffer.
+
+By checking vpitch against max_font_height, the max_font_size buffer
+will always be large enough for the vc->vc_sw->con_font_get(vc, &font,
+vpitch) call (since we already prevent loading a font larger than that),
+and c = (font.width+7)/8 * vpitch * font.charcount will always remain
+below max_font_size.
+
+Fixes: 24d69384bcd3 ("VT: Add KD_FONT_OP_SET/GET_TALL operations")
+Reported-by: syzbot+3af17071816b61e807ed@syzkaller.appspotmail.com
+Signed-off-by: Samuel Thibault <samuel.thibault@ens-lyon.org>
+Reviewed-by: Jiri Slaby <jirislaby@kernel.org>
+Link: https://lore.kernel.org/r/20230306094921.tik5ewne4ft6mfpo@begin
+Signed-off-by: Greg Kroah-Hartman <gregkh@linuxfoundation.org>
+---
+ drivers/tty/vt/vt.c | 3 +++
+ 1 file changed, 3 insertions(+)
+
+diff --git a/drivers/tty/vt/vt.c b/drivers/tty/vt/vt.c
+index 57a5c23b51d474..3c2ea9c098f7c4 100644
+--- a/drivers/tty/vt/vt.c
++++ b/drivers/tty/vt/vt.c
+@@ -4545,6 +4545,9 @@ static int con_font_get(struct vc_data *vc, struct console_font_op *op)
+ 	int c;
+ 	unsigned int vpitch = op->op == KD_FONT_OP_GET_TALL ? op->height : 32;
+ 
++	if (vpitch > max_font_height)
++		return -EINVAL;
++
+ 	if (op->data) {
+ 		font.data = kvmalloc(max_font_size, GFP_KERNEL);
+ 		if (!font.data)

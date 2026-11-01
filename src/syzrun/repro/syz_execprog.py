@@ -45,11 +45,15 @@ def build_execprog_flags(repro_file: Path) -> list[str]:
     flags = [
         "-executor=/root/syz-executor",
         "-cover=0",
+        # syz-execprog's ipc configuration defaults to threaded mode.  Keep
+        # that default when an older repro header omits the field.
         f"-threaded={1 if options.get('threaded', True) else 0}",
         f"-collide={1 if options.get('collide', False) else 0}",
         f"-procs={int(options.get('procs', 1))}",
     ]
 
+    # Reproducer headers from this syzkaller era also assume infinite repeat
+    # when the option is omitted; an explicit false still means one run.
     repeat = options.get("repeat", True)
     repeat_times = int(options.get("repeattimes", 0 if repeat else 1))
     flags.append(f"-repeat={repeat_times}")
@@ -67,6 +71,50 @@ def build_execprog_flags(repro_file: Path) -> list[str]:
     return flags
 
 
+_REPLACEABLE_FLAGS = frozenset(
+    {
+        "-executor",
+        "-cover",
+        "-threaded",
+        "-collide",
+        "-procs",
+        "-repeat",
+        "-sandbox",
+        "-fault_call",
+        "-fault_nth",
+        "-output",
+    }
+)
+_FEATURE_FLAGS = frozenset({"-enable", "-disable"})
+
+
+def merge_execprog_flags(base: list[str], overrides: list[str]) -> list[str]:
+    """Apply profile flags without leaving conflicting duplicate options."""
+
+    result = list(base)
+    for override in overrides:
+        key = override.split("=", 1)[0]
+        if key in _FEATURE_FLAGS and "=" in override:
+            values = override.split("=", 1)[1]
+            if values and values != "none":
+                existing_index = next(
+                    (index for index, item in enumerate(result) if item.startswith(f"{key}=")),
+                    None,
+                )
+                if existing_index is None:
+                    result.append(override)
+                else:
+                    existing_values = result[existing_index].split("=", 1)[1]
+                    merged = [item for item in existing_values.split(",") if item and item != "none"]
+                    merged.extend(item for item in values.split(",") if item and item not in merged)
+                    result[existing_index] = f"{key}={','.join(merged) or 'none'}"
+            continue
+        if key in _REPLACEABLE_FLAGS:
+            result = [item for item in result if item.split("=", 1)[0] != key]
+        result.append(override)
+    return result
+
+
 def start_syz_repro(
     *,
     vm: QemuVM,
@@ -81,8 +129,7 @@ def start_syz_repro(
     vm.scp_to(repro_file, "/root/repro.syz")
     vm.ssh("chmod +x /root/syz-execprog /root/syz-executor", timeout=60, log_path=vm.logs_dir / "repro.log")
 
-    flags = build_execprog_flags(repro_file)
-    flags.extend(extra_args or [])
+    flags = merge_execprog_flags(build_execprog_flags(repro_file), extra_args or [])
     command_parts = ["timeout", f"{timeout}s"]
     if env:
         command_parts.append("env")

@@ -1,0 +1,280 @@
+case_id                                 	primary_category      	patch_complexity	cross_files	crash_title
+251bb5cec78ffc6f0f277696516aafb04b1e1bd9	内核告警              	简  易 ( 1- 5)    	1          	WARNING in bpf_verifier_vlog
+64bdf1f25f8db3d754e7b56c4d0f63a17edd8839	内核告警              	简  易 ( 1- 5)    	1          	WARNING in j1939_xtp_rx_abort_one
+9b857c714d3e890900acbe48172866a93ab8589a	内核告警              	简  易 ( 1- 5)    	1          	WARNING in snd_pcm_plugin_build_mulaw
+91e171a9aa357b24b62b3ab188bc04996448c99b	内核告警              	简  易 ( 1- 5)    	1          	WARNING: suspicious RCU usage in in6_dump_addrs
+b139c306850a825c7656508c3773dbea33eb56a1	内核告警              	简  易 ( 1- 5)    	1          	WARNING in xfs_qm_dqget_cache_insert
+f7c5a86e747f9b7ce333e7295875cd4ede2c7a0d	内核告警              	简  易 ( 1- 5)    	1          	WARNING: kmalloc bug in xdp_umem_create
+699e4f546c33df9781a67891d42766bbbe3ca30b	内核告警              	简  易 ( 1- 5)    	1          	possible deadlock in fuse_reverse_inval_entry
+6d600a0ff2cc263bc4edbddf0f597e456e303978	内核告警              	较简易 ( 6-15)   	1          	WARNING: bad usercopy in fanotify_read
+1f07634f79ac1436ec38e2e71d73392404b17bbb	内核告警              	中  等 (16-30)    	1          	possible deadlock in quotactl_fd
+11acaa6d5c31d0b655997957f725da4a3cc05435	内核告警              	中  等 (16-30)    	2          	WARNING in btrfs_commit_transaction
+08bcc3eb4d1892c93490ce2924713568b1fed364	内核告警              	中  等 (16-30)    	2          	possible deadlock in f2fs_getxattr
+01383b29d139cf9c9f9d9bd6e9947474ffe657a6	内核告警              	较复杂 (31-60)  	1          	WARNING in __gup_longterm_locked
+0987d64a09e1eb9642824a088eb331dbdb2db644	内核告警              	较复杂 (31-60)  	1          	WARNING in check_map_prog_compatibility
+093e7092e01bed192b564b04528826cc6f1dbf91	内存安全缺陷          	简  易 ( 1- 5)    	1          	BUG: pagefault on kernel address ADDR in non-whitelisted uaccess
+637351e3088fc2aed419d941674f2774f4162ea2	内存安全缺陷          	简  易 ( 1- 5)    	1          	BUG: bad usercopy in con_font_op
+71f39cec3c870f687b26c5595d7a8608849f37ba	内存安全缺陷          	简  易 ( 1- 5)    	1          	BUG: unable to handle kernel NULL pointer dereference in call_rcu
+02617ac69815ae324053c954118c2dc7ba0e59b2	内存安全缺陷          	简  易 ( 1- 5)    	1          	KASAN: slab-out-of-bounds Read in decrypt_internal
+1a351beaed9d438481f1fc96aa336a25f71a2ae1	内存安全缺陷          	简  易 ( 1- 5)    	1          	KASAN: use-after-free Read in mas_next_entry
+1c77e2dda8a84073f16043ab0978a6ad5b820f34	内存安全缺陷          	简  易 ( 1- 5)    	1          	KASAN: use-after-free Read in batadv_interface_tx
+37f68bc0a80819d1509e1b024c413389ae877175	内存安全缺陷          	简  易 ( 1- 5)    	1          	KASAN: slab-out-of-bounds Read in xfs_getbmap
+44fa54548362cb84e26da7c1bbd356c86c54f36d	内存安全缺陷          	简  易 ( 1- 5)    	1          	KASAN: stack-out-of-bounds Read in xfrm_state_find
+67d3719a7490d99812faae7f9c2c26e9f386c1a6	内存安全缺陷          	简  易 ( 1- 5)    	1          	KASAN: slab-out-of-bounds Write in hfs_asc2mac
+7d0e7e183df07b0c306cca5dfd022a64c302dd4f	内存安全缺陷          	简  易 ( 1- 5)    	1          	KASAN: slab-out-of-bounds Write in record_print_text
+874c5bfa1234dcef000574388df68a8d08274ecd	内存安全缺陷          	简  易 ( 1- 5)    	1          	KASAN: use-after-free Read in hfsplus_release_folio
+b32fa08468c9e84e361296e1bc502283ea202ec6	内存安全缺陷          	简  易 ( 1- 5)    	1          	KASAN: invalid-free in packet_set_ring
+b72d20070b541e44e5b91326de68930e51654c81	内存安全缺陷          	简  易 ( 1- 5)    	1          	KASAN: slab-out-of-bounds Read in selinux_xfrm_alloc_user
+b7575418eb496c7def8d76caff2c1c8755682e90	内存安全缺陷          	简  易 ( 1- 5)    	1          	KASAN: slab-out-of-bounds Read in batadv_interface_tx
+bf967d2c5ba62946c61152534c8b84823d848f05	内存安全缺陷          	简  易 ( 1- 5)    	1          	KASAN: use-after-free Write in dst_release
+d21cb12ee03822236d82ba4e83a1f8968e7832fb	内存安全缺陷          	简  易 ( 1- 5)    	1          	KASAN: null-ptr-deref Read in filemap_fault
+dad6a582c4d54162ae8d096210ca126b659fd8c0	内存安全缺陷          	简  易 ( 1- 5)    	1          	KASAN: slab-out-of-bounds Read in hfs_cat_keycmp
+e2fdad19640cdf94dec600b3c67260b6095e5f7d	内存安全缺陷          	简  易 ( 1- 5)    	1          	KASAN: slab-out-of-bounds Read in io_uring_show_fdinfo
+39ab3e5efebf884fd72eef1df306285bffcdaa56	内存安全缺陷          	简  易 ( 1- 5)    	1          	KMSAN: uninit-value in ieee80211_rx_handlers
+12be9aa373be9d8727cdd172f190de39528a413a	内存安全缺陷          	简  易 ( 1- 5)    	1          	general protection fault in selinux_socket_recvmsg
+36d6a96ec654d05f67fae60852aece19119c4772	内存安全缺陷          	简  易 ( 1- 5)    	1          	general protection fault in nfc_alloc_send_skb
+39b560f8c5d46a5c107b83c6a1e8ae4051826de0	内存安全缺陷          	简  易 ( 1- 5)    	1          	general protection fault in pse_prepare_data
+6e96f5bd56bfecdaa0bfeaf2695a25cc80bfbd9a	内存安全缺陷          	简  易 ( 1- 5)    	1          	general protection fault in ip_set_comment_free
+b5d799a2cc619607ed6e322f97f78eaf534451e1	内存安全缺陷          	简  易 ( 1- 5)    	1          	general protection fault in getname_kernel
+d2ad6548d6f4f8f52f8fa250310fb027f04cfd18	内存安全缺陷          	简  易 ( 1- 5)    	1          	general protection fault in nl802154_trigger_scan
+daa1858cc0258eb026f89eecf342f6b3fdad7b05	内存安全缺陷          	简  易 ( 1- 5)    	1          	general protection fault in em_cmp_match
+ef9605001826ed9db7e9ae5b0c08ec9b347a5148	内存安全缺陷          	简  易 ( 1- 5)    	1          	general protection fault in io_uring_show_fdinfo
+b36d7e444fe532685b683ae7980f4e3a184f0ad8	内存安全缺陷          	简  易 ( 1- 5)    	2          	BUG: unable to handle kernel paging request in ethnl_update_bitset32
+2e1943a94647f7732dd6fc60368642d6e8dc91b1	内存安全缺陷          	简  易 ( 1- 5)    	2          	KASAN: use-after-free Read in hci_send_acl
+8d31c0d56f794feb72c2d359795c74908dab34c0	内存安全缺陷          	简  易 ( 1- 5)    	2          	KASAN: slab-out-of-bounds Read in ethnl_update_bitset32
+1bc76a5779300075e3466a0e2abcd753df212779	内存安全缺陷          	较简易 ( 6-15)  	1          	KASAN: null-ptr-deref Write in __pm_runtime_resume
+392ce929bb0e269e6782a4d0586e5f187b9e4d92	内存安全缺陷          	较简易 ( 6-15)  	1          	KASAN: slab-out-of-bounds Read in hci_le_meta_evt
+43332d148577054abb1088752ddad8730beee2f9	内存安全缺陷          	较简易 ( 6-15)  	1          	KASAN: use-after-free Read in io_wq_worker_wake
+4894a6d412735394296e80976329c1a6848acc14	内存安全缺陷          	较简易 ( 6-15)  	1          	KASAN: invalid-free in init_file
+731e35eeed762019e385baa96953d9ec8eb63c10	内存安全缺陷          	较简易 ( 6-15)  	1          	KASAN: slab-out-of-bounds Read in get_max_inline_xattr_value_size
+b0932be9507e30fc4cbd16bf05cd3bea03b325d7	内存安全缺陷          	较简易 ( 6-15)  	1          	KASAN: use-after-free Read in disk_release_events
+e0083a52ae0eb23d3186173d403646079b45c715	内存安全缺陷          	较简易 ( 6-15)  	1          	KASAN: slab-out-of-bounds Write in usb_hcd_poll_rh_status
+e1c3525a4f4e2e4b6c1f73611ceaf61ef462700c	内存安全缺陷          	较简易 ( 6-15)  	1          	KASAN: slab-out-of-bounds Read in thrustmaster_probe
+e84ebd53b11608595ca4fd595d48ae9ddce9cf11	内存安全缺陷          	较简易 ( 6-15)  	1          	KASAN: slab-out-of-bounds Write in process_preds
+ec324fb855382395411b32d87a6eafd5da721ecc	内存安全缺陷          	较简易 ( 6-15)  	1          	KASAN: slab-out-of-bounds Read in sctp_getsockopt
+f5697a2cc8cc739814a87d3755258160e812c9dd	内存安全缺陷          	较简易 ( 6-15)  	1          	KASAN: use-after-free Read in ipvlan_queue_xmit
+4157935be2e32fae6b62aa95bb0a08b07160b986	内存安全缺陷          	较简易 ( 6-15)  	1          	general protection fault in ntfs_update_mftmirr
+59997d828822e7dc674e4715a5bd454d9dc1742f	内存安全缺陷          	较简易 ( 6-15)  	1          	general protection fault in btf_struct_resolve
+6922c8c31f1fdd120d1cef3f58b319b6dd1d8c00	内存安全缺陷          	较简易 ( 6-15)  	1          	general protection fault in qp_release_pages
+c861c927f694825cea94240c7acf698eccb2a8c2	内存安全缺陷          	较简易 ( 6-15)  	1          	general protection fault in nilfs_palloc_commit_free_entry
+d5cd7bc74de1e50a5139d45189395427cc5c3f63	内存安全缺陷          	较简易 ( 6-15)  	1          	general protection fault in btf_array_resolve
+e58343393efd3e0657ca37cf4466fc38d1f4d4df	内存安全缺陷          	较简易 ( 6-15)  	1          	general protection fault in release_udmabuf
+89740d8d8416726adeba5953543037142b3b20be	内存安全缺陷          	较简易 ( 6-15)  	2          	general protection fault in keyctl_pkey_params_get
+95277dbea9484baea60662d0243a93011a21ceb5	内存安全缺陷          	较简易 ( 6-15)  	3          	KASAN: vmalloc-out-of-bounds Read in __ebt_unregister_table
+accafa9281766c4630ea5aeaad0d83decd70406d	内存安全缺陷          	较简易 ( 6-15)  	3          	KASAN: slab-use-after-free Read in nilfs_load_inode_block
+74c4de068e77c137156235cc06a904c9baea491f	内存安全缺陷          	中  等 (16-30)    	1          	KASAN: slab-use-after-free Read in nilfs_load_inode_block
+8dba39eccdf108d625bf6acb2bea1aa0c7e1fd61	内存安全缺陷          	中  等 (16-30)    	1          	general protection fault in xt_rateest_put
+990d1ea15a57bc6fa79779c7c6d36be2a423bc06	内存安全缺陷          	中  等 (16-30)    	1          	general protection fault in xt_rateest_tg_checkentry
+a8e52aea23a08661ca01bb5346bb78d35df76b50	内存安全缺陷          	中  等 (16-30)    	1          	general protection fault in fq_codel_enqueue
+85eccd45a5b1d5a43a6808e6139a4c814052ccb2	内存安全缺陷          	中  等 (16-30)    	2          	UBSAN: array-index-out-of-bounds in alg_bind
+2e1c26930cc57edee80734ae71bf020493b32306	内存安全缺陷          	中  等 (16-30)    	6          	KASAN: slab-out-of-bounds Read in fl6_update_dst
+35ca150acc791b7283bb643a0edbbc185aa4a69e	内存安全缺陷          	较复杂 (31-60)  	1          	BUG: unable to handle kernel paging request in smc_nl_handle_smcr_dev
+26cb120b31cd24d984fc16da67f50fb375c432a7	内存安全缺陷          	较复杂 (31-60)  	1          	KASAN: slab-out-of-bounds Read in pfkey_add
+32577e96d88447ded2d3b76d71254fb855245837	内存安全缺陷          	较复杂 (31-60)  	1          	KASAN: use-after-free Read in bit_putcs
+6fe3c93209dfd48301d1cad0ab1efd53c87462e1	内存安全缺陷          	较复杂 (31-60)  	1          	general protection fault in sys_finit_module
+fea1767458f80cd02b783a4a317e76c229ffddab	内存安全缺陷          	较复杂 (31-60)  	1          	general protection fault in icmp_timeout_obj_to_nlattr
+1bb51491ca5df96a5f724899d1dbb87afda61419	内存安全缺陷          	较复杂 (31-60)  	2          	KASAN: slab-use-after-free Read in hci_conn_hash_flush
+4f6ce6f5223c2c8e75c92ce8cb619b227a8b0277	内存安全缺陷          	较复杂 (31-60)  	2          	KASAN: use-after-free Read in tipc_nl_node_dump_link
+64bdab02654a9c43c1009be0bd3d7e992ba2eab2	内存安全缺陷          	较复杂 (31-60)  	2          	KASAN: use-after-free Read in devlink_get_from_attrs
+80b047eb9aff0254f4adc620c6891c0ca3276309	内存安全缺陷          	较复杂 (31-60)  	2          	KASAN: use-after-free Read in tipc_nl_node_dump_monitor_peer
+ad6e459b5804609befe3e5c24001b25185b073fc	内存安全缺陷          	较复杂 (31-60)  	2          	KASAN: use-after-free Read in netdev_name_node_lookup_rcu
+14f3125f37b7c76896b25c222159f6c205ff7e08	内存安全缺陷          	较复杂 (31-60)  	3          	UBSAN: array-index-out-of-bounds in ieee80211_del_key
+2ebf4e2ffdaf022d2aac190c391ecb56689b6fc4	内存安全缺陷          	复  杂 (61-∞)     	1          	KASAN: slab-out-of-bounds Write in udf_find_entry
+5e2e50e2c145ca06459e9e0900c20eefd1a0877e	并发与竞态缺陷        	简  易 ( 1- 5)    	1          	BUG: corrupted list in p9_fd_cancel
+4d35dd2768109c21f717806fb4274293758d65cf	并发与竞态缺陷        	简  易 ( 1- 5)    	1          	KASAN: slab-out-of-bounds Read in mt_validate_nulls
+c4fd25bc9502e9924e2b0850151cbbf707fb2c31	并发与竞态缺陷        	简  易 ( 1- 5)    	1          	KASAN: use-after-free Read in netlbl_catmap_walk
+e675fbaf856bd1465eed8b8f51ae182b58b8d656	并发与竞态缺陷        	简  易 ( 1- 5)    	1          	KASAN: null-ptr-deref Read in ida_free
+80cd1e9033a1460be92ea438e6c5b8e0ef52101a	并发与竞态缺陷        	简  易 ( 1- 5)    	1          	WARNING: suspicious RCU usage in tipc_l2_send_msg
+943853d124b5c70143eb385e993d35cb42a883c7	并发与竞态缺陷        	简  易 ( 1- 5)    	1          	WARNING: refcount bug in qrtr_recvmsg
+49b6f675bead6969f913a3f7dcef4d28fdd13296	并发与竞态缺陷        	简  易 ( 1- 5)    	1          	kernel BUG in validate_mm
+507c1be447a4c69f108a0b8cd281fcab44eaf774	并发与竞态缺陷        	较简易 ( 6-15)  	1          	KASAN: use-after-free Read in io_rsrc_node_ref_zero
+6513f6cb5cd6b5fc9f37e3bb70d273b94be9c34c	并发与竞态缺陷        	较简易 ( 6-15)  	1          	WARNING in ext4_xattr_block_set
+76c0afb6e24e6dc4093c36801d0b3a61b486ec4d	并发与竞态缺陷        	较简易 ( 6-15)  	1          	WARNING in nilfs_segctor_do_construct
+1bb19c23cbf08cedbc6bbe5d4b7e07f6403fa35e	并发与竞态缺陷        	较简易 ( 6-15)  	1          	WARNING: suspicious RCU usage in mas_start
+4b5b6bdc090752dbcdd7e220a4703fed752cdfe7	并发与竞态缺陷        	较简易 ( 6-15)  	1          	general protection fault in nilfs_clear_dirty_page
+bb281e89381b9ed55728c274447a575e69a96c35	并发与竞态缺陷        	较简易 ( 6-15)  	1          	general protection fault in ovl_dentry_upper
+cfaa72b0f8cf807081aad90d4fe7c2442f0bf12b	并发与竞态缺陷        	较简易 ( 6-15)  	1          	general protection fault in virtio_transport_purge_skbs
+d6fce0d2ff8fac6127ae3c5c9a8afa55fa30cf3a	并发与竞态缺陷        	较简易 ( 6-15)  	2          	general protection fault in ieee80211_subif_start_xmit
+f41839fbe9126fba553e1c791cd8c62584a2376f	并发与竞态缺陷        	较简易 ( 6-15)  	3          	kernel BUG in find_mergeable_anon_vma
+37556d70764e226e660023fad17c9c0316cb6f1d	并发与竞态缺陷        	中  等 (16-30)    	1          	KASAN: use-after-free Read in move_expired_inodes
+724cf869d3bb512081588651530d8071a4b61ceb	并发与竞态缺陷        	中  等 (16-30)    	1          	general protection fault in start_transaction
+f080ff8eb73ae6a29960594307de8e732db389d3	并发与竞态缺陷        	中  等 (16-30)    	1          	general protection fault in __drop_extent_tree
+0264f823322ea8600fbe3fb7e9e016569ca542d8	并发与竞态缺陷        	中  等 (16-30)    	2          	KASAN: use-after-free Write in __vb2_cleanup_fileio
+362b5b49fced29361c0ba3007a2b3e5cd13776b5	并发与竞态缺陷        	较复杂 (31-60)  	1          	BUG: corrupted list in rdma_listen
+75b0feac9a3f9e361fd60605e261f8a4ffef1c40	并发与竞态缺陷        	较复杂 (31-60)  	1          	BUG: unable to handle kernel paging request in truncate_inode_partial_folio
+384b9a05e5d4c3e74e31427e43a08f40f71db54a	并发与竞态缺陷        	较复杂 (31-60)  	1          	KASAN: slab-use-after-free Read in afs_dynroot_test_super
+3f5d1a7de17359e085f9a912eae7bf7e89dc7435	并发与竞态缺陷        	较复杂 (31-60)  	1          	KASAN: use-after-free Read in __post_watch_notification
+8dc7a6aed7b8ead4c982ecdf2cd1ea5a4c3b57bb	并发与竞态缺陷        	较复杂 (31-60)  	1          	WARNING in notify_change
+07c9d71dc1a215b19c6a245c68f502bc57dbdb83	并发与竞态缺陷        	较复杂 (31-60)  	1          	WARNING: suspicious RCU usage in ctrl_cmd_new_lookup
+5c8b4f0ea10c23945625f4187bac8e6e471d732c	并发与竞态缺陷        	较复杂 (31-60)  	1          	kernel BUG in __page_mapcount
+19526c104e66c633a05949201c4c09a3ec8c5644	并发与竞态缺陷        	较复杂 (31-60)  	3          	general protection fault in __ext4_journal_get_write_access
+4ed0d6eea4561854b366170155a78652da4cef29	整数与算术错误        	简  易 ( 1- 5)    	1          	UBSAN: shift-out-of-bounds in vhci_hub_control
+52eac4b79cfb13db9907627c1afc185252168cdc	整数与算术错误        	简  易 ( 1- 5)    	1          	UBSAN: shift-out-of-bounds in snd_usbmidi_get_ms_info
+5eb8a5d29d77f8a364cf3270bf9625eb4d4ffc52	整数与算术错误        	简  易 ( 1- 5)    	1          	UBSAN: shift-out-of-bounds in dbAllocBits
+7f34dec8b4c3be61baad2f552b05d2011d64ae87	整数与算术错误        	简  易 ( 1- 5)    	1          	UBSAN: shift-out-of-bounds in std_validate
+ac6fc97113de554dc57614c3ffa4c6a2c2668a97	整数与算术错误        	简  易 ( 1- 5)    	1          	UBSAN: shift-out-of-bounds in hid_report_raw_event
+c434e401d70d584f408424099090ddebe2076705	整数与算术错误        	较简易 ( 6-15)  	1          	UBSAN: shift-out-of-bounds in ntfs_fill_super
+b96fbfdb1cf23b90ac7ee98b9c66235110e4a943	整数与算术错误        	较简易 ( 6-15)  	5          	UBSAN: shift-out-of-bounds in sfq_init
+ca2299cf11b3e3d3d0f44ac479410a14eecbd326	整数与算术错误        	中  等 (16-30)    	1          	WARNING in idr_alloc
+7b2aea1ce02f87c175f94492d21d04a34bc99b5e	整数与算术错误        	中  等 (16-30)    	2          	INFO: task hung in vhost_work_dev_flush
+0be4824a86385f022a4f6f5104bcb9246032fdd9	整数与算术错误        	中  等 (16-30)    	2          	WARNING: kmalloc bug in snd_pcm_plugin_alloc
+a1a049fcf154a2c466232111c09a030ac656a833	整数与算术错误        	中  等 (16-30)    	2          	divide error in encrypt_packet
+59174b68c3c9d5d3ecc323e0b0a0c5466b0e7d18	整数与算术错误        	中  等 (16-30)    	3          	INFO: task hung in nilfs_segctor_thread
+4892aaa2ef26ab83c6b974f1db422f526f9aaec0	整数与算术错误        	中  等 (16-30)    	4          	KASAN: out-of-bounds Read in pebs_update_state
+b5b251b9bcc4653c39164dfee969dafb903ae25e	整数与算术错误        	较复杂 (31-60)  	1          	UBSAN: shift-out-of-bounds in dummy_hub_control
+a8afc55e6cd0cac79fd97a5c0d2272751dc558fc	死锁与锁使用错误      	简  易 ( 1- 5)    	1          	INFO: task hung in flush_workqueue
+0cd33d8e114be941da0773f8980488e1ca71ed58	死锁与锁使用错误      	简  易 ( 1- 5)    	1          	WARNING: bad unlock balance in rxrpc_recvmsg
+d92cc44e8c8ce5af6d2bea9f7a73cee791989fc8	死锁与锁使用错误      	简  易 ( 1- 5)    	1          	WARNING: locking bug in ext4_xattr_inode_iget
+8137f770127ad3ae80cc615fbb3b3bdf71c5e17e	死锁与锁使用错误      	简  易 ( 1- 5)    	2          	INFO: task hung in hci_dev_close_sync
+9e03d0567a2ff908a4bcf8bc378c03be4afdd75d	死锁与锁使用错误      	较简易 ( 6-15)  	1          	INFO: task hung in find_inode_fast
+ee9018bd8989530a2dbdd62436efd8b1c3ecd3e5	死锁与锁使用错误      	较简易 ( 6-15)  	1          	INFO: task hung in rfcomm_process_sessions
+7ba391f8e821454d748011f0dbd3ed0f862dfb78	死锁与锁使用错误      	较简易 ( 6-15)  	1          	WARNING in io_sync_cancel
+3ac451d171eed4f6027b4c46176f6eda99e8547b	死锁与锁使用错误      	较简易 ( 6-15)  	1          	possible deadlock in f_getown
+602383e46c337fd7a0b8346ee047fe2778b76647	死锁与锁使用错误      	较简易 ( 6-15)  	1          	possible deadlock in send_sigurg
+8b72c13e9214edd7b500ce751886d847742a18ef	死锁与锁使用错误      	较简易 ( 6-15)  	1          	possible deadlock in send_sigio
+b5095bfec44ec84213bac54742a82483aad578ce	死锁与锁使用错误      	较简易 ( 6-15)  	1          	possible deadlock in seq_read
+b929091c762f0a3060a9941dcacfed0c3b4a903d	死锁与锁使用错误      	较简易 ( 6-15)  	1          	possible deadlock in j1939_sk_errqueue
+949ecf93b67ab1df8f890571d24ef9db50872c96	死锁与锁使用错误      	较简易 ( 6-15)  	2          	unregister_netdevice: waiting for DEV to become free
+1bd2e7a7bb0310b1b0974022c78ee23975119187	死锁与锁使用错误      	中  等 (16-30)    	1          	inconsistent lock state in rxrpc_put_client_connection_id
+bf3e592d3ed61b8f86b8ffba072adcde5485a5f6	死锁与锁使用错误      	中  等 (16-30)    	1          	inconsistent lock state in kmem_cache_alloc
+1665a0a4a1d6d4d3f61624353f8a9e5dbfff67bd	死锁与锁使用错误      	中  等 (16-30)    	1          	possible deadlock in __inet_inherit_port
+212130bd8af05df1d923b02f9a71db6e8208e40d	死锁与锁使用错误      	中  等 (16-30)    	1          	possible deadlock in blkdev_put
+72c3096dbc86cdffde7afa178a39dc1a29dec67a	死锁与锁使用错误      	中  等 (16-30)    	1          	possible deadlock in do_user_addr_fault
+f07cf3e7df6d272b92ccdabfeef07ae06c014ca5	死锁与锁使用错误      	中  等 (16-30)    	1          	possible deadlock in jbd2_log_wait_commit
+6408a8ba0fa0e3940c5c2dfa40e808cbf4228689	死锁与锁使用错误      	较复杂 (31-60)  	1          	possible deadlock in userfaultfd_release
+47ff89a13ed39d393e043ec2715452a5b23ce8b2	死锁与锁使用错误      	复  杂 (61-∞)     	1          	INFO: task hung in write_cache_pages
+b5ecc684bb9e49db213e88f69d4ce80f7e20238d	死锁与锁使用错误      	复  杂 (61-∞)     	1          	possible deadlock in nci_start_poll
+08d09127d5fca845e6d94dea344c5b758bc45615	死锁与锁使用错误      	复  杂 (61-∞)     	2          	WARNING: bad unlock balance in rxrpc_do_sendmsg
+17ba20e86ace8566cff1a3ace9042a779bd8bb7c	无限循环与任务卡死    	较简易 ( 6-15)  	1          	INFO: task hung in hwrng_register
+e1306831b0c04a2ee7705d93be9747c870cadfd5	无限循环与任务卡死    	较简易 ( 6-15)  	1          	INFO: rcu detected stall in sys_setxattr
+a59816f87c8e514d1b5ed891ae85341fbef1e553	无限循环与任务卡死    	较复杂 (31-60)  	3          	KASAN: use-after-free Read in bio_poll
+38efa4618c3379cf98642b9379d6e340b14d2702	逻辑与状态校验错误    	简  易 ( 1- 5)    	1          	BUG: unable to handle kernel NULL pointer dereference in io_do_iopoll
+a5954455fcfa51c29ca2ab55b203076337e1c770	逻辑与状态校验错误    	简  易 ( 1- 5)    	1          	INFO: trying to register non-static key in __flush_work
+bb3342477c4669ef082c7056b6e2be4f903e646e	逻辑与状态校验错误    	简  易 ( 1- 5)    	1          	INFO: trying to register non-static key in nilfs_bmap_lookup_at_level
+17535f4bf5b322437f7c639b59161ce343fc55a9	逻辑与状态校验错误    	简  易 ( 1- 5)    	1          	KASAN: null-ptr-deref Read in refcount_sub_and_test_checked
+cd95cb722bfa1234ac4c78345c8953ee2e7170d0	逻辑与状态校验错误    	简  易 ( 1- 5)    	1          	KASAN: use-after-free Read in ext4_find_extent
+e8fc405587520f9442d64d47321fd53cef0f9bde	逻辑与状态校验错误    	简  易 ( 1- 5)    	1          	KASAN: user-memory-access Write in zram_slot_lock
+17d5de7f1fcab794cb8c40032f893f52de899324	逻辑与状态校验错误    	简  易 ( 1- 5)    	1          	WARNING in __might_sleep
+32c85d199d85c11202246570956a2cbe272f235a	逻辑与状态校验错误    	简  易 ( 1- 5)    	1          	WARNING in restore_regulatory_settings
+35dd38010e383ee37d27b39f6b50eb25b4c92dd2	逻辑与状态校验错误    	简  易 ( 1- 5)    	1          	WARNING in corrupted
+411da18352321f05aba7dada8b3e3aff4afcaada	逻辑与状态校验错误    	简  易 ( 1- 5)    	1          	WARNING in tls_strp_done
+4f4531908efc47fa22cc64aacbb920d7afb4e222	逻辑与状态校验错误    	简  易 ( 1- 5)    	1          	WARNING in ext4_xattr_block_set
+75a2a727e4636c7a34dbd49197b15c3de92a8f7f	逻辑与状态校验错误    	简  易 ( 1- 5)    	1          	WARNING in hugetlb_wp
+82136e2452d5e1ea212f5bf76fcd8db36512f981	逻辑与状态校验错误    	简  易 ( 1- 5)    	1          	WARNING in erofs_iget
+8e9ea22655c782ac9af556ba3d4d822530a59390	逻辑与状态校验错误    	简  易 ( 1- 5)    	1          	WARNING in usbtmc_ioctl/usb_submit_urb
+a49f5785c682daf283714b6695f902e5371b83d7	逻辑与状态校验错误    	简  易 ( 1- 5)    	1          	WARNING in rmqueue
+d1975758ab72f25acdc552246472398abe66c7fd	逻辑与状态校验错误    	简  易 ( 1- 5)    	1          	WARNING in iommufd_test_check_pages
+d524c1aac21f8ea2759b6314c2e48bfa230c38b0	逻辑与状态校验错误    	简  易 ( 1- 5)    	1          	WARNING in rds_rdma_extra_size
+d905b9cf668a6fd23e8268008fff061b302d6fb5	逻辑与状态校验错误    	简  易 ( 1- 5)    	1          	WARNING in mntput_no_expire
+de88544daafacdbc8ec3b2d75ca9e7e0f03346e0	逻辑与状态校验错误    	简  易 ( 1- 5)    	1          	WARNING in tcp_enter_loss
+e9d3ca982b76224e183481018baa693a26655ac4	逻辑与状态校验错误    	简  易 ( 1- 5)    	1          	WARNING in ext4_update_inline_data
+ecd1f6c4b2442ea4c47c7331ed1c27c0cfdc627e	逻辑与状态校验错误    	简  易 ( 1- 5)    	1          	WARNING in ext4_da_release_space
+f1b41b503f18f268d11e52f80deffcd0c62e0865	逻辑与状态校验错误    	简  易 ( 1- 5)    	1          	WARNING in sta_info_insert_rcu
+feb49e622c3d0ca5ff931e55e2310f96a4d0231e	逻辑与状态校验错误    	简  易 ( 1- 5)    	1          	WARNING in __flush_work
+4649ea695ca98903ae82280a3b7aa97dbeb7fd07	逻辑与状态校验错误    	简  易 ( 1- 5)    	1          	general protection fault in nexthop_is_blackhole
+e9f526f59d5b25decd3b91d4270b5da2aa23c8f6	逻辑与状态校验错误    	简  易 ( 1- 5)    	1          	general protection fault in __vb2_queue_free
+f9cfa5c5564ffc453258d835293bf6e9881c5b1c	逻辑与状态校验错误    	简  易 ( 1- 5)    	1          	general protection fault in sctp_sched_rr_dequeue
+31a3f2ad09a571fb7a5212efc400ce6bfc82e04c	逻辑与状态校验错误    	简  易 ( 1- 5)    	1          	kernel BUG in ext4_es_cache_extent
+544afab64e441605326c54f7c2d4aa9bab2419ff	逻辑与状态校验错误    	简  易 ( 1- 5)    	1          	memory leak in nr_create
+2db2545ff94291fabe4a5dd4ee182db44ef35d4b	逻辑与状态校验错误    	较简易 ( 6-15)   	1          	BUG: GPF in non-whitelisted uaccess (non-canonical address?)
+738a1a0b5b9b8ece2bbf714f2e244358be2523c3	逻辑与状态校验错误    	较简易 ( 6-15)   	1          	INFO: task hung in pipe_release
+e2907149c69cbccae0842eb502b8af4f6fac52a0	逻辑与状态校验错误    	较简易 ( 6-15)   	1          	KASAN: use-after-free Read in xfs_btree_lookup_get_block
+d58fe2a53afa4ffbfaf3df368acb70d137e46c9f	逻辑与状态校验错误    	较简易 ( 6-15)   	1          	UBSAN: array-index-out-of-bounds in f2fs_iget
+4d37ad3f55c09b663fe33db0a19fc9684e805a81	逻辑与状态校验错误    	较简易 ( 6-15)   	1          	WARNING in nilfs_dat_commit_end
+67d5dc5f84651b05fc3c2cb3d163037f414a10f4	逻辑与状态校验错误    	较简易 ( 6-15)   	1          	WARNING in qrtr_tun_write_iter
+766aad2609c9a3742436a3e25518eba8f5c6ddc8	逻辑与状态校验错误    	较简易 ( 6-15)   	1          	WARNING in usbtmc_ioctl/usb_submit_urb
+ffb9228cab75ad9d812af93d19e9637873d18439	逻辑与状态校验错误    	较简易 ( 6-15)   	1          	WARNING in ipgre_xmit
+0784eb04ffd5b9955880826669badef2ffb32285	逻辑与状态校验错误    	较简易 ( 6-15)   	1          	general protection fault in btrfs_finish_ordered_extent
+cd246a3e7f0fd69a115b910b3b2cf6fa96351278	逻辑与状态校验错误    	较简易 ( 6-15)   	1          	general protection fault in nilfs_btree_insert
+4a547542bb29dc957c096f0c95ef9154e93d68d3	逻辑与状态校验错误    	较简易 ( 6-15)   	1          	kernel BUG in ext4_ind_remove_space
+5d5821ad053bbbd4a11174989f2bf9d111873c52	逻辑与状态校验错误    	较简易 ( 6-15)   	1          	kernel BUG in fou_build_udp
+64619c0d6d2ef98d85b7bb4ff271bfa9df74ce03	逻辑与状态校验错误    	较简易 ( 6-15)   	1          	kernel BUG in ext4_mb_use_inode_pa
+6e185619b66eae1ef09684c5f6e283d6cfb5ba84	逻辑与状态校验错误    	较简易 ( 6-15)   	1          	kernel BUG in btrfs_drop_extents
+bf7780df648105d40e1fdbb0566defda3605ed93	逻辑与状态校验错误    	较简易 ( 6-15)   	1          	kernel BUG in __skb_gso_segment
+96e0ffd75bd9a59edf367decb7583c8994e48cd6	逻辑与状态校验错误    	较简易 ( 6-15)   	2          	WARNING in wnd_init
+f55849742bdcdf58f6eaae61e747ac00e5c061f4	逻辑与状态校验错误    	较简易 ( 6-15)   	3          	WARNING in change_protection
+f7649aa07ffca82dc93dc5cebc00c665849f5138	逻辑与状态校验错误    	较简易 ( 6-15)   	4          	kernel BUG at security/keys/keyring.c:LINE!
+3443d3a1fa6d964dd7310a0cb1696d165a3e07c4	逻辑与状态校验错误    	中  等 (16-30)    	1          	BUG: unable to handle kernel paging request in bitfill_aligned
+9e18fe37d8af37d2b7da77206058aa78c2a1a9df	逻辑与状态校验错误    	中  等 (16-30)    	1          	BUG: unable to handle kernel paging request in bitfill_aligned
+f0ec9a394925aafbdf13d0a7e6af4cff860f0ed6	逻辑与状态校验错误    	中  等 (16-30)    	1          	BUG: corrupted list in kobject_add_internal
+3dc1e16188e3fa22917a642188e4f08cbfc894a4	逻辑与状态校验错误    	中  等 (16-30)    	1          	KASAN: use-after-free Read in add_wait_queue
+9a58b47cdbbb40f7679a00991cac436716c70192	逻辑与状态校验错误    	中  等 (16-30)    	1          	KASAN: slab-out-of-bounds Read in udf_get_filelongad
+33e08264ba252fcf3ed89b69fd088ac976363535	逻辑与状态校验错误    	中  等 (16-30)    	1          	WARNING in udf_setsize
+625eef83808cdc8a4d6775801b04e985eb32fcf7	逻辑与状态校验错误    	中  等 (16-30)    	1          	WARNING in btrfs_split_ordered_extent
+8db097bf9d28642881b6dee785166885150fbd86	逻辑与状态校验错误    	中  等 (16-30)    	1          	WARNING in nilfs_dat_prepare_end
+deb061ff946b02c2f4821f91683d89a68b2f45f8	逻辑与状态校验错误    	中  等 (16-30)    	1          	WARNING in hfsplus_cat_write_inode
+e6028c53b349b6a97a83fe01a2013ac52db59710	逻辑与状态校验错误    	中  等 (16-30)    	1          	WARNING in __kernel_read
+5d48b50ed679f22d7d4a4b578da8559d34b104ac	逻辑与状态校验错误    	中  等 (16-30)    	1          	general protection fault in percpu_ref_put
+993d8b5e64393ed9e6a70f9ae4de0119c605a822	逻辑与状态校验错误    	中  等 (16-30)    	1          	kernel BUG in vhost_get_vq_desc
+f1d54f488af5e3967ea8e664e514cb1c2820db45	逻辑与状态校验错误    	中  等 (16-30)    	1          	kernel BUG in __clear_extent_bit
+0ec05481e31f2772a2c6f16aecb38f48467da26e	逻辑与状态校验错误    	中  等 (16-30)    	2          	WARNING in bpf_check
+7a56fd91f3db3a79c974b34e1aac3879898d6f29	逻辑与状态校验错误    	较复杂 (31-60)  	1          	WARNING in __nf_unregister_net_hook
+e0640a911365faa499433155c3d5d5b674b36a83	逻辑与状态校验错误    	较复杂 (31-60)  	3          	WARNING in cttimeout_default_get
+cdaf5ed409125df023889aefe50b4cc4a41c0973	逻辑与状态校验错误    	较复杂 (31-60)  	7          	WARNING in do_symlinkat
+1bef50bdd9622a1969608d1090b2b4a588d0c6ac	逻辑与状态校验错误    	复  杂 (61-∞)     	2          	KASAN: null-ptr-deref Read in filp_close
+d8e8c32d387c7b35680b035aab36efdefe253ab7	逻辑与状态校验错误    	复  杂 (61-∞)     	2          	WARNING in do_chunk_alloc
+0084fd109a7a10011e183a357715c91cff2cacb0	逻辑与状态校验错误    	复  杂 (61-∞)     	4          	WARNING in alloc_pages_vma
+2a42bcdee55085e729aa4e472bf86adf2036ad40	资源与生命周期管理缺陷	简  易 ( 1- 5)    	1          	BUG: Dentry still in use [unmount of hugetlbfs hugetlbfs]
+2dbce17f865f34c37da63de733f31001f293d78f	资源与生命周期管理缺陷	简  易 ( 1- 5)    	1          	BUG: Dentry still in use [unmount of sysfs sysfs]
+c7c63c2548579c7e4718d2f8bc079a6e152e4ac8	资源与生命周期管理缺陷	简  易 ( 1- 5)    	1          	KASAN: use-after-free Read in nf_hook_entries_grow
+789df5b54ebd19aec0b5c3900c933d1910db8ec5	资源与生命周期管理缺陷	简  易 ( 1- 5)    	1          	WARNING in ext4_expand_extra_isize_ea
+802aba2422de4218ad0c01b46c9525cc9d4e4aa3	资源与生命周期管理缺陷	简  易 ( 1- 5)    	1          	WARNING in nf_tables_exit_net
+cdf00205127303ca523678fbb9d7eb7613632dba	资源与生命周期管理缺陷	简  易 ( 1- 5)    	1          	WARNING in io_ring_ctx_wait_and_kill
+316ecfd071c79a4654861c1cf6a93d4ac0693de0	资源与生命周期管理缺陷	简  易 ( 1- 5)    	1          	general protection fault in smc_getname
+6e5e224656a49e9167742ed797391bad751c812a	资源与生命周期管理缺陷	简  易 ( 1- 5)    	1          	general protection fault in smc_getsockopt
+75fe6df4627d7e49fca2e0a73dfc12f5fac4588f	资源与生命周期管理缺陷	简  易 ( 1- 5)    	1          	general protection fault in smc_setsockopt
+30f3a18df370dd15cce6f725620ac001e57dbee1	资源与生命周期管理缺陷	简  易 ( 1- 5)    	1          	kernel BUG in hfs_bnode_put
+0518799fc2250353125d212fc510c44adbde73c3	资源与生命周期管理缺陷	简  易 ( 1- 5)    	1          	memory leak in __build_skb
+05d0def6cba37ae08ca4138a8e49d01191e87b71	资源与生命周期管理缺陷	简  易 ( 1- 5)    	1          	memory leak in lapb_register
+0be1740a2972a1852f35a3ed7dc70577610edcbd	资源与生命周期管理缺陷	简  易 ( 1- 5)    	1          	memory leak in snd_seq_create_port
+0d0ea881c98701d8dcee7f48b634a84962689fa1	资源与生命周期管理缺陷	简  易 ( 1- 5)    	1          	memory leak in hwsim_new_radio_nl
+1860a98f3556d97065ad773d095aa1d7eb5fbafa	资源与生命周期管理缺陷	简  易 ( 1- 5)    	1          	memory leak in smc_create
+19a04b43c75ed1092021010419b5e560a8172c4f	资源与生命周期管理缺陷	简  易 ( 1- 5)    	1          	memory leak in hidraw_report_event
+1a201ce4f0f4ab2f165b93d0ce5c15ebe1a5b321	资源与生命周期管理缺陷	简  易 ( 1- 5)    	1          	memory leak in prctl
+1fbd9fd0ef463a9811d2c5b7d206f119cf259601	资源与生命周期管理缺陷	简  易 ( 1- 5)    	1          	memory leak in smc_sysctl_net_init
+2482c46517c04822f40780fde741031bf9493450	资源与生命周期管理缺陷	简  易 ( 1- 5)    	1          	memory leak in atusb_probe
+41a6b5d4917c0412eb3b3c3c604965bed7d7420b	资源与生命周期管理缺陷	简  易 ( 1- 5)    	1          	memory leak in ext4_expand_extra_isize_ea
+5b79a616feb996279758323aba4031c57f80a8bc	资源与生命周期管理缺陷	简  易 ( 1- 5)    	1          	memory leak in do_replace
+5f4efc25ef5c6175138a39105a204749b5c83b1c	资源与生命周期管理缺陷	简  易 ( 1- 5)    	1          	memory leak in cinergyt2_fe_attach
+66fe8eb71f455a245547576eb8d36fec957d2424	资源与生命周期管理缺陷	简  易 ( 1- 5)    	1          	memory leak in hub_event
+6c4345574ac937d9ccc195fdadb44f7cc95a19f9	资源与生命周期管理缺陷	简  易 ( 1- 5)    	1          	memory leak in nft_chain_parse_hook
+7d3c28ba3d4bf4b26e89ed1f1ca146e0223a2d36	资源与生命周期管理缺陷	简  易 ( 1- 5)    	1          	memory leak in keyctl_watch_key
+848057f402cb7a9107901060c07f48cd2e00e0e9	资源与生命周期管理缺陷	简  易 ( 1- 5)    	1          	memory leak in __proc_create
+84f71cc91e3c76e86a37858f87f0807ee8294deb	资源与生命周期管理缺陷	简  易 ( 1- 5)    	1          	memory leak in bcsp_recv
+92a742e993c8b9e769f8502a0497c88c0afa78af	资源与生命周期管理缺陷	简  易 ( 1- 5)    	1          	memory leak in gs_usb_probe
+9bbe4b842c98f0ed05c5eed77a226e9de33bf298	资源与生命周期管理缺陷	简  易 ( 1- 5)    	1          	memory leak in dvb_create_media_graph
+9f45870b9b0218be0cd678380aa432f5c7cdacc1	资源与生命周期管理缺陷	简  易 ( 1- 5)    	1          	memory leak in gadget_bind
+a9412f636e2d733130f8def7975897d0b57f6e37	资源与生命周期管理缺陷	简  易 ( 1- 5)    	1          	memory leak in autofs_wait
+b3dc989f84068f0d7b59f01722e2bf2dc0db65e1	资源与生命周期管理缺陷	简  易 ( 1- 5)    	1          	memory leak in packet_set_ring
+b54ce858dfdc3312ec8d2ad304d7002982b50ca6	资源与生命周期管理缺陷	简  易 ( 1- 5)    	1          	memory leak in gadget_setup
+cdc284a3166b0aa5c8797071e971fd0606769e61	资源与生命周期管理缺陷	简  易 ( 1- 5)    	1          	memory leak in virtual_ncidev_write
+cfec079d55325bc20e929c60cc2dca149448f9b1	资源与生命周期管理缺陷	简  易 ( 1- 5)    	1          	memory leak in watch_queue_set_size
+fe36c362e30b849dad0ab99e2d1f09b82fc72883	资源与生命周期管理缺陷	简  易 ( 1- 5)    	1          	memory leak in tcf_pedit_init
+46dd655664a8b38dbf7234683b294171a4e0142b	资源与生命周期管理缺陷	简  易 ( 1- 5)    	2          	memory leak in class_create
+032c91d1b0189a2a36f47141f9c3331f8c09d7b1	资源与生命周期管理缺陷	较简易 ( 6-15)   	1          	WARNING in static_key_slow_try_dec
+0b6b2d6d6cefa8b462930e55be699efba635788f	资源与生命周期管理缺陷	较简易 ( 6-15)   	1          	WARNING in __nf_unregister_net_hook
+e0623166295289b0b91d327386331328f3f2505d	资源与生命周期管理缺陷	较简易 ( 6-15)   	1          	WARNING in hsr_dev_finalize
+11cb6eec3ac0b37e657e8af0612342e140379e49	资源与生命周期管理缺陷	较简易 ( 6-15)   	1          	memory leak in vhci_write
+36a409539269df8733aaba8c3b36cf2fc7091cf7	资源与生命周期管理缺陷	较简易 ( 6-15)   	1          	memory leak in regulatory_hint_core
+5091eca677b6821339a9491de5b4151c5be85ae7	资源与生命周期管理缺陷	较简易 ( 6-15)   	1          	memory leak in mld_newpack
+641c688b5c5a0c80d5d5832c5cd9f361c1cbb0a9	资源与生命周期管理缺陷	较简易 ( 6-15)   	1          	memory leak in raw_open
+6cd217d3878763ebef28a8fd279c88e791c1c9ef	资源与生命周期管理缺陷	较简易 ( 6-15)   	1          	memory leak in copy_process
+7c512c7b421b211e4408a4bc7ac759e3a3eb0d44	资源与生命周期管理缺陷	较简易 ( 6-15)   	1          	memory leak in qrtr_create
+ab98490c0e3b48a71b7c203ee51366c99ceeda84	资源与生命周期管理缺陷	较简易 ( 6-15)   	1          	memory leak in nf_tables_parse_netdev_hooks
+e88760744e620228603baf7d76a637c75f7d9e1e	资源与生命周期管理缺陷	较简易 ( 6-15)   	1          	memory leak in pcan_usb_fd_init
+e93dddbf164fb5dea44a6e6dbdec8fece1613543	资源与生命周期管理缺陷	较简易 ( 6-15)   	1          	memory leak in garp_request_join
+fea808dfe3c6dfdd6ba9778becbffe0b14e91294	资源与生命周期管理缺陷	较简易 ( 6-15)   	2          	memory leak in xskq_create
+5f439f7e53341346d669d692a31b66bfb69233c0	资源与生命周期管理缺陷	较简易 ( 6-15)   	3          	memory leak in inet_create
+bfa97c20456b53075bb5ec214f4beac81b19504b	资源与生命周期管理缺陷	较简易 ( 6-15)   	3          	memory leak in nfcmrvl_nci_register_dev
+29c5543922b443b1843b38f1334976b6305e30c9	资源与生命周期管理缺陷	中  等 (16-30)    	1          	memory leak in usb_urb_init
+7be7d262d5aae39f2dd7683de0ba6646857007bc	资源与生命周期管理缺陷	中  等 (16-30)    	1          	memory leak in virtio_transport_send_pkt_info
+9d6af32008ffd651175d152c5bea92cf767ae38c	资源与生命周期管理缺陷	中  等 (16-30)    	1          	memory leak in io_submit_sqes
+c94c1c23e829d5ac97995d51219f0c5a0cd1fa54	资源与生命周期管理缺陷	中  等 (16-30)    	1          	memory leak in mcba_usb_probe
+ee107e687b29b99d101ba328f28abfad4e58a91a	资源与生命周期管理缺陷	中  等 (16-30)    	1          	memory leak in bsg_register_queue
+64182208616de0ae5ebd9b1652cb213485d61fce	资源与生命周期管理缺陷	中  等 (16-30)    	3          	memory leak in nfc_genl_se_io
+e90732b9b16086b7f6207149157d36c0faea59f1	资源与生命周期管理缺陷	中  等 (16-30)    	3          	memory leak in crypto_create_tfm_node
+fc06b7648458c074fcb68b09007fdc1877827791	资源与生命周期管理缺陷	较复杂 (31-60)  	1          	WARNING in idr_get_next
+3ce164d1f22d112c0bb0ef379a2656b5ca401583	资源与生命周期管理缺陷	较复杂 (31-60)  	1          	memory leak in wacom_probe
+4e787d7ede986c6bdabd8a46e10dcee11b5768c7	资源与生命周期管理缺陷	较复杂 (31-60)  	1          	memory leak in video_usercopy
+6bb7224cd01f8742533b486573005f65d512fdf6	资源与生命周期管理缺陷	较复杂 (31-60)  	5          	memory leak in sctp_sched_prio_set
+223c64b1a2c03f0d67d64fdf69606ee2d5e26672	资源与生命周期管理缺陷	复  杂 (61- ∞)     	4          	WARNING in batadv_nc_mesh_free

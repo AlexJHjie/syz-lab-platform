@@ -33,12 +33,12 @@ class RootfsLocator:
         if not image.is_file():
             raise FileNotFoundError(
                 f"rootfs image not found: {image}. Configure rootfs.image for this vulnerability "
-                "or run scripts/create_rootfs.sh"
+                "or run scripts/rootfs/create_rootfs-base.sh"
             )
         if not ssh_key.is_file():
             raise FileNotFoundError(
                 f"SSH private key not found: {ssh_key}. Configure rootfs.ssh_key for this vulnerability "
-                "or run scripts/create_rootfs.sh"
+                "or run scripts/rootfs/create_rootfs-base.sh"
             )
         return Rootfs(
             image=image.resolve(),

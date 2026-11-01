@@ -1,0 +1,58 @@
+From 94c13f66e13ca0f3d5b7b9e7e385fe5db35abe3c Mon Sep 17 00:00:00 2001
+From: Linus Torvalds <torvalds@linux-foundation.org>
+Date: Mon, 17 Dec 2018 11:39:57 -0800
+Subject: [PATCH] security: don't use a negative Opt_err token index
+
+The code uses a bitmap to check for duplicate tokens during parsing, and
+that doesn't work at all for the negative Opt_err token case.
+
+There is absolutely no reason to make Opt_err be negative, and in fact
+it only confuses things, since some of the affected functions actually
+return a positive Opt_xyz enum _or_ a regular negative error code (eg
+-EINVAL), and using -1 for Opt_err makes no sense.
+
+There are similar problems in ima_policy.c and key encryption, but they
+don't have the immediate bug wrt bitmap handing, and ima_policy.c in
+particular needs a different patch to make the enum values match the
+token array index.  Mimi is sending that separately.
+
+Reported-by: syzbot+a22e0dc07567662c50bc@syzkaller.appspotmail.com
+Reported-by: Eric Biggers <ebiggers@kernel.org>
+Fixes: 5208cc83423d ("keys, trusted: fix: *do not* allow duplicate key options")
+Fixes: 00d60fd3b932 ("KEYS: Provide keyctls to drive the new key type ops for asymmetric keys [ver #2]")
+Cc: James Morris James Morris <jmorris@namei.org>
+Cc: Mimi Zohar <zohar@linux.vnet.ibm.com>
+Cc: Jarkko Sakkinen <jarkko.sakkinen@linux.intel.com>
+Cc: Peter Huewe <peterhuewe@gmx.de>
+Signed-off-by: Linus Torvalds <torvalds@linux-foundation.org>
+---
+ security/keys/keyctl_pkey.c | 2 +-
+ security/keys/trusted.c     | 2 +-
+ 2 files changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/security/keys/keyctl_pkey.c b/security/keys/keyctl_pkey.c
+index 783978842f13a7..70e65a2ff2073a 100644
+--- a/security/keys/keyctl_pkey.c
++++ b/security/keys/keyctl_pkey.c
+@@ -25,7 +25,7 @@ static void keyctl_pkey_params_free(struct kernel_pkey_params *params)
+ }
+ 
+ enum {
+-	Opt_err = -1,
++	Opt_err,
+ 	Opt_enc,		/* "enc=<encoding>" eg. "enc=oaep" */
+ 	Opt_hash,		/* "hash=<digest-name>" eg. "hash=sha1" */
+ };
+diff --git a/security/keys/trusted.c b/security/keys/trusted.c
+index ff6789365a12fb..697bfc6c819236 100644
+--- a/security/keys/trusted.c
++++ b/security/keys/trusted.c
+@@ -711,7 +711,7 @@ static int key_unseal(struct trusted_key_payload *p,
+ }
+ 
+ enum {
+-	Opt_err = -1,
++	Opt_err,
+ 	Opt_new, Opt_load, Opt_update,
+ 	Opt_keyhandle, Opt_keyauth, Opt_blobauth,
+ 	Opt_pcrinfo, Opt_pcrlock, Opt_migratable,

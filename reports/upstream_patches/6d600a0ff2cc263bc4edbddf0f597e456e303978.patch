@@ -1,0 +1,55 @@
+From b2d22b6bb33aac10c415e4ba13c8eade201c6f09 Mon Sep 17 00:00:00 2001
+From: Jan Kara <jack@suse.cz>
+Date: Tue, 12 Mar 2019 12:42:37 +0100
+Subject: [PATCH] fanotify: Allow copying of file handle to userspace
+
+When file handle is embedded inside fanotify_event and usercopy checks
+are enabled, we get a warning like:
+
+Bad or missing usercopy whitelist? Kernel memory exposure attempt detected
+from SLAB object 'fanotify_event' (offset 40, size 8)!
+WARNING: CPU: 1 PID: 7649 at mm/usercopy.c:78 usercopy_warn+0xeb/0x110
+mm/usercopy.c:78
+
+Annotate handling in fanotify_event properly to mark copying it to
+userspace is fine.
+
+Reported-by: syzbot+2c49971e251e36216d1f@syzkaller.appspotmail.com
+Fixes: a8b13aa20afb ("fanotify: enable FAN_REPORT_FID init flag")
+Signed-off-by: Kees Cook <keescook@chromium.org>
+Reviewed-by: Amir Goldstein <amir73il@gmail.com>
+Signed-off-by: Jan Kara <jack@suse.cz>
+---
+ fs/notify/fanotify/fanotify_user.c | 12 +++++++++++-
+ 1 file changed, 11 insertions(+), 1 deletion(-)
+
+diff --git a/fs/notify/fanotify/fanotify_user.c b/fs/notify/fanotify/fanotify_user.c
+index 56992b32c6bbb6..a90bb19dcfa287 100644
+--- a/fs/notify/fanotify/fanotify_user.c
++++ b/fs/notify/fanotify/fanotify_user.c
+@@ -208,6 +208,7 @@ static int copy_fid_to_user(struct fanotify_event *event, char __user *buf)
+ {
+ 	struct fanotify_event_info_fid info = { };
+ 	struct file_handle handle = { };
++	unsigned char bounce[FANOTIFY_INLINE_FH_LEN], *fh;
+ 	size_t fh_len = event->fh_len;
+ 	size_t len = fanotify_event_info_len(event);
+ 
+@@ -233,7 +234,16 @@ static int copy_fid_to_user(struct fanotify_event *event, char __user *buf)
+ 
+ 	buf += sizeof(handle);
+ 	len -= sizeof(handle);
+-	if (copy_to_user(buf, fanotify_event_fh(event), fh_len))
++	/*
++	 * For an inline fh, copy through stack to exclude the copy from
++	 * usercopy hardening protections.
++	 */
++	fh = fanotify_event_fh(event);
++	if (fh_len <= FANOTIFY_INLINE_FH_LEN) {
++		memcpy(bounce, fh, fh_len);
++		fh = bounce;
++	}
++	if (copy_to_user(buf, fh, fh_len))
+ 		return -EFAULT;
+ 
+ 	/* Pad with 0's */

@@ -10,6 +10,19 @@ class CrashFingerprint:
     report_type: str
     subtype: str | None
     functions: tuple[str, ...]
+    accepted_report_types: tuple[str, ...] = ()
+    accepted_subtypes: tuple[str, ...] = ()
+    match_all_functions: bool = False
+
+
+@dataclass(frozen=True)
+class CrashTargetConfig:
+    """Optional per-case crash selection rules from vulnerabilities.json."""
+
+    report_types: tuple[str, ...]
+    subtypes: tuple[str, ...] = ()
+    functions: tuple[str, ...] = ()
+    match_all_functions: bool = False
 
 
 @dataclass(frozen=True)
@@ -28,21 +41,24 @@ class Verdict:
 
 
 PREFIX = r"^\s*(?:\[[^\]\r\n]*\]\s*)*"
+WARNING_AT = re.compile(PREFIX + r"WARNING:(?=\s+(?:CPU:\s+\d+(?:\s+PID:\s+\d+)?\s+)?at\b)", re.I)
 UBSAN_START = re.compile(PREFIX + r"(?:BUG:\s+)?UBSAN:\s+[a-z][a-z0-9-]*", re.I)
 REPORT_STARTS = (
     ("MEMORY_LEAK", re.compile(PREFIX + r"BUG:\s+memory leak\b", re.I)),
     ("KASAN", re.compile(PREFIX + r"BUG:\s+KASAN:", re.I)),
     ("KMSAN", re.compile(PREFIX + r"BUG:\s+KMSAN:", re.I)),
-    ("WARNING", re.compile(PREFIX + r"WARNING:(?=\s+(?:CPU:\s+\d+(?:\s+PID:\s+\d+)?\s+)?at\b)", re.I)),
+    ("WARNING", re.compile(PREFIX + r"WARNING:", re.I)),
     ("GPF", re.compile(PREFIX + r"(?:BUG:\s+GPF\b|general protection fault(?:\b|:))", re.I)),
     ("DIVIDE_ERROR", re.compile(PREFIX + r"divide error:", re.I)),
     ("HUNG_TASK", re.compile(PREFIX + r"INFO:\s+task .+ blocked for more than\b", re.I)),
-    ("RCU_STALL", re.compile(PREFIX + r"INFO:\s+rcu(?:_[a-z]+)? detected stalls\b", re.I)),
+    ("RCU_STALL", re.compile(PREFIX + r"(?:rcu:\s*)?INFO:\s+rcu(?:_[a-z]+)?\s+(?:self-)?detected stalls?\b", re.I)),
     ("SOFT_LOCKUP", re.compile(PREFIX + r"(?:watchdog:\s+)?BUG:\s+soft lockup\b", re.I)),
     ("OOPS", re.compile(PREFIX + r"Oops:", re.I)),
     ("PANIC", re.compile(PREFIX + r"(?:Kernel panic - not syncing:|panic:)", re.I)),
     ("BUG", re.compile(PREFIX + r"(?:kernel BUG at\b|BUG:)", re.I)),
     ("UBSAN", UBSAN_START),
+    ("LOCKDEP", re.compile(PREFIX + r"INFO:\s+trying to register non-static key\.", re.I)),
+    ("NETDEV_WAIT", re.compile(PREFIX + r"unregister_netdevice:\s+waiting for \S+ to become free\.\s+Usage count\s*=\s*\d+\b", re.I)),
 )
 REPORT_END = re.compile(r"(?:---\[\s*end (?:trace|Kernel panic)\b.*\]---|Rebooting in\b)", re.I)
 SEPARATOR = re.compile(PREFIX + r"=+\s*$")
@@ -62,6 +78,7 @@ GENERIC = {
     "entry_SYSCALL_64_after_hwframe", "__vfs_write", "__kernel_write", "write_pipe_buf",
     "__splice_from_pipe", "splice_from_pipe", "default_file_splice_write", "do_splice_from",
     "direct_splice_actor", "splice_direct_to_actor", "do_splice_direct", "do_sendfile",
+    "asm_sysvec_apic_timer_interrupt", "do_syscall_x64",
 }
 GENERIC_PREFIXES = (
     "kmalloc", "kzalloc", "__kmalloc", "kmem_cache_", "slab_", "kfree", "vfree", "vunmap",
@@ -69,6 +86,10 @@ GENERIC_PREFIXES = (
     "__ubsan_handle",
 )
 COMPILER_SUFFIX = re.compile(r"\.(?:isra|constprop|part|cold)(?:\.\d+)*$")
+LOCK_HELPERS = ("dump_stack", "__dump_stack", "lock_acquire", "__lock_acquire",
+                "register_lock_class", "lockdep_rcu_suspicious", "_raw_")
+
+
 class ReportStream:
     def __init__(self) -> None:
         self.partial = ""
@@ -85,7 +106,9 @@ class ReportStream:
             new_kind = report_type(line)
             continuation = self.kind is not None and (
                 new_kind == self.kind and self.kind in {"WARNING", "GPF"}
-                and not any("Call Trace:" in item for item in self.lines) or new_kind == "PANIC"
+                and not any("Call Trace:" in item for item in self.lines)
+                and (self.kind != "WARNING" or WARNING_AT.match(line) and WARNING_AT.match(self.lines[0]))
+                or new_kind == "PANIC"
             )
             # syz-symbolize (and KASAN itself) can print one BUG header for
             # every inline frame before the actual outer frame.  Those
@@ -112,7 +135,9 @@ class ReportStream:
     def _emit(self, reports: list[CrashReport]) -> None:
         if self.kind and self.lines:
             text = "".join(self.lines)
-            reports.append(CrashReport(text, fingerprint(text, self.kind)))
+            fp = fingerprint(text, self.kind)
+            if self.kind != "WARNING" or WARNING_AT.match(text) or fp.functions:
+                reports.append(CrashReport(text, fp))
         self.kind, self.lines = None, []
 
 
@@ -135,7 +160,7 @@ class StreamMatcher:
             common = _matching_functions(self.target, report.fingerprint)
             if common and self.matched is None:
                 self.matched = Verdict(
-                    "reproduced", f"{self.target.report_type} in {common[0]}",
+                    "reproduced", f"{report.fingerprint.report_type} in {common[0]}",
                     "matched crash fingerprint", self.source_log, report.text,
                 )
         return self.result()
@@ -159,19 +184,73 @@ def split_reports(text: str) -> list[CrashReport]:
 
 
 def fingerprint(text: str, kind: str) -> CrashFingerprint:
+    if kind == "NETDEV_WAIT":
+        return CrashFingerprint(kind, None, ("unregister_netdevice",))
+    structured = kind == "LOCKDEP" or kind == "WARNING" and not WARNING_AT.match(text)
+    lines = text.splitlines()
     subtype = None
+    if structured:
+        lines = [re.sub(PREFIX, "", line) for line in lines]
+        text = "\n".join(lines)
+        primary = re.split(r"other info|the existing dependency chain|state was registered at:|Call Trace:|which would create a new lock dependency:", text, maxsplit=1)[0]
+        locks = list(dict.fromkeys(re.findall(r"\((.+)\)\{([.+?\-]+)\}", primary)))
+        irq = re.search(r"(HARDIRQ|SOFTIRQ)-(?:un)?safe", primary)
+        locks = [(name, irq[1], flags[2:4] if irq[1] == "SOFTIRQ" else flags[:2]) for name, flags in locks] if irq else [name for name, _ in locks]
+        # Lockdep appends "#N" to a lock class name when the same lock is
+        # registered at several sites.  The suffix differs between machines
+        # for the same lock, so normalize it for the subtype only; "locks"
+        # itself stays untouched for the record lookup below.  The version
+        # precedes the subclass when both are printed ("#3/4"), so match it
+        # before either a "/" or the end of the name.
+        norm_locks = [(re.sub(r"#\d+(?=/|$)", "", n[0]), *n[1:]) if isinstance(n, tuple) else re.sub(r"#\d+(?=/|$)", "", n) for n in locks]
+        states = re.search(r"inconsistent \{([^}]+)\} -> \{([^}]+)\}", primary)
+        subtype = re.sub(r"^(?:WARNING|INFO):\s*", "", lines[0], flags=re.I).strip().lower()
+        subtype += f"; locks={sorted(norm_locks) if 'irq lock inversion' in subtype else norm_locks}; states={sorted(states.groups()) if states else []}"
+        unsafe = re.search(r"but this lock took another, (HARDIRQ|SOFTIRQ)-unsafe lock", primary)
+        record = re.search(r"-> \(" + re.escape(locks[-1][0]) + r"\).*?(?=\n\s*->|\Z)", text, re.S) if unsafe and locks else None
+        usage = re.search(unsafe[1] + r"-ON-[WR] at:\s*\n(.*)", record[0], re.S) if record else None
+        lines = (usage[1] if usage else primary).splitlines()
+        if not usage and not any(FUNC_OFFSET.search(line) and "[inline]" not in line for line in lines):
+            lines = text.rsplit("Call Trace:", 1)[-1].splitlines()
+    elif kind == "WARNING":
+        lines = lines[: next((i for i, line in enumerate(lines) if "Code:" in line or "Call Trace:" in line), len(lines))]
+    elif kind == "RCU_STALL" and "<TASK>" in text:
+        lines = text.rsplit("<TASK>", 1)[1].splitlines()
+    elif kind == "MEMORY_LEAK":
+        lines = lines[next((i for i, line in enumerate(lines) if "backtrace:" in line.lower()), 0) :]
     if kind in {"KASAN", "KMSAN"}:
         subtype_match = SANITIZER_SUBTYPE.search(text)
         subtype = subtype_match.group(1).lower() if subtype_match else None
         if re.search(r"BUG:\s+KASAN:\s+double-free or invalid-free\b", text, re.I):
             subtype = "invalid-free"
-    candidates = (COMPILER_SUFFIX.sub("", fn) for fn in _function_candidates(text, kind))
-    specific = tuple(dict.fromkeys(fn for fn in candidates if fn not in REPORTING | GENERIC and not fn.startswith(GENERIC_PREFIXES)))
-    functions = specific[-1:] if kind == "WARNING" else specific[:5]
+    functions: list[str] = []
+    for line in lines:
+        if structured and ("[inline]" in line or re.match(PREFIX + r"\?", line)):
+            continue
+        functions.extend(match.group(1) for match in FUNC_OFFSET.finditer(line))
+        functions.extend(match.group(1) for match in FUNC_SOURCE.finditer(line))
+    candidates = (COMPILER_SUFFIX.sub("", fn) for fn in functions)
+    excluded = REPORTING | ({"flush_work"} if structured else GENERIC)
+    prefixes = LOCK_HELPERS if structured else GENERIC_PREFIXES
+    specific = tuple(dict.fromkeys(fn for fn in candidates if fn not in excluded and not fn.startswith(prefixes)))
+    limit = 2 if kind == "LOCKDEP" else 1 if structured else 8 if kind in {"KASAN", "KMSAN"} else 5
+    functions = specific[-1:] if kind == "WARNING" and not structured else specific[:limit]
     return CrashFingerprint(kind, subtype, functions)
 
 
-def target_fingerprint(path: Path) -> CrashFingerprint:
+def target_fingerprint(path: Path, override: CrashTargetConfig | None = None) -> CrashFingerprint:
+    if override is not None:
+        if not override.report_types:
+            raise ValueError("target crash configuration must contain at least one report type")
+        return CrashFingerprint(
+            report_type=override.report_types[0],
+            subtype=override.subtypes[0] if len(override.subtypes) == 1 else None,
+            functions=override.functions,
+            accepted_report_types=override.report_types,
+            accepted_subtypes=override.subtypes,
+            match_all_functions=override.match_all_functions,
+        )
+
     stream = ReportStream()
     with path.open("rb") as source:
         for line in source:
@@ -212,22 +291,23 @@ def classify_path(
 
 
 def _matching_functions(target: CrashFingerprint, observed: CrashFingerprint) -> list[str]:
-    if target.report_type != observed.report_type:
+    accepted_types = target.accepted_report_types or (target.report_type,)
+    if observed.report_type not in accepted_types:
         return []
-    if target.subtype and observed.subtype and target.subtype != observed.subtype:
+    accepted_subtypes = target.accepted_subtypes
+    if accepted_subtypes and observed.subtype not in accepted_subtypes:
         return []
+    # An explicit target configuration with no subtype intentionally accepts
+    # any subtype of the selected report type.  Inferred targets retain the
+    # historical subtype check for WARNING reports.
+    if not accepted_subtypes and not target.accepted_report_types and target.subtype != observed.subtype and (
+        target.report_type == "WARNING" or target.subtype and observed.subtype
+    ):
+        return []
+    if target.report_type == "LOCKDEP":
+        return list(target.functions) if len(target.functions) == 2 and target.functions == observed.functions else []
     observed_functions = set(observed.functions)
-    return [fn for fn in target.functions if fn in observed_functions]
-
-
-def _function_candidates(text: str, kind: str) -> list[str]:
-    lines = text.splitlines()
-    if kind == "WARNING":
-        lines = lines[: next((i for i, line in enumerate(lines) if "Code:" in line or "Call Trace:" in line), len(lines))]
-    elif kind == "MEMORY_LEAK":
-        lines = lines[next((i for i, line in enumerate(lines) if "backtrace:" in line.lower()), 0) :]
-    functions: list[str] = []
-    for line in lines:
-        functions.extend(match.group(1) for match in FUNC_OFFSET.finditer(line))
-        functions.extend(match.group(1) for match in FUNC_SOURCE.finditer(line))
-    return functions
+    common = [fn for fn in target.functions if fn in observed_functions]
+    if target.match_all_functions and len(common) != len(target.functions):
+        return []
+    return common

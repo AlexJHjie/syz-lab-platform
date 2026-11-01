@@ -1,0 +1,16 @@
+diff --git a/net/ipv6/addrconf.c b/net/ipv6/addrconf.c
+index 5864cbc30db6..49cc6587dd77 100644
+--- a/net/ipv6/addrconf.c
++++ b/net/ipv6/addrconf.c
+@@ -5168,9 +5168,9 @@ static int in6_dump_addrs(struct inet6_dev *idev, struct sk_buff *skb,
+ 		fillargs->event = RTM_GETMULTICAST;
+ 
+ 		/* multicast address */
+-		for (ifmca = rcu_dereference(idev->mc_list);
++		for (ifmca = rtnl_dereference(idev->mc_list);
+ 		     ifmca;
+-		     ifmca = rcu_dereference(ifmca->next), ip_idx++) {
++		     ifmca = rtnl_dereference(ifmca->next), ip_idx++) {
+ 			if (ip_idx < s_ip_idx)
+ 				continue;
+ 			err = inet6_fill_ifmcaddr(skb, ifmca, fillargs);

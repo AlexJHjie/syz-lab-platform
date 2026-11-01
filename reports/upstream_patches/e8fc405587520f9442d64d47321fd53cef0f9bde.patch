@@ -1,0 +1,36 @@
+From 3eb96946f0be6bf447cbdf219aba22bc42672f92 Mon Sep 17 00:00:00 2001
+From: Christoph Hellwig <hch@lst.de>
+Date: Wed, 24 May 2023 08:05:38 +0200
+Subject: [PATCH] block: make bio_check_eod work for zero sized devices
+
+Since the dawn of time bio_check_eod has a check for a non-zero size of
+the device.  This doesn't really make any sense as we never want to send
+I/O to a device that's been set to zero size, or never moved out of that.
+
+I am a bit surprised we haven't caught this for a long time, but the
+removal of the extra validation inside of zram caused syzbot to trip
+over this issue recently.  I've added a Fixes tag for that commit, but
+the issue really goes back way before git history.
+
+Fixes: 9fe95babc742 ("zram: remove valid_io_request")
+Reported-by: syzbot+b8d61a58b7c7ebd2c8e0@syzkaller.appspotmail.com
+Signed-off-by: Christoph Hellwig <hch@lst.de>
+Link: https://lore.kernel.org/r/20230524060538.1593686-1-hch@lst.de
+Signed-off-by: Jens Axboe <axboe@kernel.dk>
+---
+ block/blk-core.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/block/blk-core.c b/block/blk-core.c
+index 00c74330fa92c2..1da77e7d628946 100644
+--- a/block/blk-core.c
++++ b/block/blk-core.c
+@@ -520,7 +520,7 @@ static inline int bio_check_eod(struct bio *bio)
+ 	sector_t maxsector = bdev_nr_sectors(bio->bi_bdev);
+ 	unsigned int nr_sectors = bio_sectors(bio);
+ 
+-	if (nr_sectors && maxsector &&
++	if (nr_sectors &&
+ 	    (nr_sectors > maxsector ||
+ 	     bio->bi_iter.bi_sector > maxsector - nr_sectors)) {
+ 		pr_info_ratelimited("%s: attempt to access beyond end of device\n"

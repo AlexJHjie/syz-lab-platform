@@ -19,6 +19,9 @@
 ./scripts/start.sh all
 ```
 
+各 rootfs 的独立构建脚本及设备隔离库位于 `scripts/rootfs/`，也可直接执行其中对应的构建脚本。
+所有镜像及 SSH 密钥统一保存在 `work/cache/rootfs/<镜像名称>/`；基础镜像名为 `rootfs-base`，可用 `./scripts/start.sh rootfs-base` 单独构建。
+
 安装过程需要 `sudo` 权限。各步骤依次执行，某一步失败后会继续执行后续步骤，最后汇总失败项；存在失败项时返回非零退出码。
 若工具链下载涉及私有 GitHub Release，需提前设置具有只读权限的 `GITHUB_TOKEN`。
 
@@ -124,6 +127,10 @@ less work/runs/<id>/logs/attempt-01/qemu.log
 ```text
 work/
 ├── cache/                  # 下载内容、Git mirror、rootfs
+│   └── rootfs/
+│       ├── rootfs-base/     # 默认基础镜像和 SSH 密钥
+│       ├── rootfs-evdev3/   # 专用镜像和 SSH 密钥
+│       └── ...
 └── runs/<id>/
     ├── input/              # 元数据、配置、reproducer、补丁
     ├── kernel/linux/       # Linux 工作树

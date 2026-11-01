@@ -65,11 +65,11 @@ GITHUB_TOKEN="$(gh auth token)" ./scripts/setup_toolchains.sh
 首次运行前必须创建普通 rootfs 和固件 rootfs：
 
 ```bash
-./scripts/create_rootfs.sh
-./scripts/create_rootfs-firmware.sh
+./scripts/rootfs/create_rootfs-base.sh
+./scripts/rootfs/create_rootfs-firmware.sh
 ```
 
-两个命令均需要 `sudo`，分别在 `work/cache/rootfs/` 和 `work/cache/rootfs-firmware/` 下生成 `rootfs.img` 与 SSH 密钥。固件镜像用于依赖 Atheros AR9271 固件的漏洞，并由 `configs/vulnerabilities.json` 自动选择。
+两个命令均需要 `sudo`，分别在 `work/cache/rootfs/rootfs-base/` 和 `work/cache/rootfs/rootfs-firmware/` 下生成 `rootfs.img` 与 SSH 密钥。固件镜像用于依赖 Atheros AR9271 固件的漏洞，并由 `configs/vulnerabilities.json` 自动选择。
 
 默认启用 KVM。确认当前用户可访问 `/dev/kvm`；若无 KVM，可使用较慢的软件虚拟化：
 

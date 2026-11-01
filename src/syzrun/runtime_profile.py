@@ -6,6 +6,7 @@ from pathlib import Path
 from typing import Any
 
 from .metadata import Vulnerability
+from .repro.verdict import CrashTargetConfig
 
 DEFAULT_RUNTIME_PROFILES = Path(__file__).resolve().parents[2] / "configs" / "vulnerabilities.json"
 
@@ -33,6 +34,8 @@ class RuntimeProfile:
     repro_env: dict[str, str] = field(default_factory=dict)
     execprog_args: list[str] = field(default_factory=list)
     rootfs: RootfsProfile | None = None
+    repro_timeout: int = 2 * 60
+    target_crash: CrashTargetConfig | None = None
 
     @classmethod
     def empty(cls) -> "RuntimeProfile":
@@ -69,7 +72,9 @@ def load_runtime_profile(vuln: Vulnerability, config_path: Path = DEFAULT_RUNTIM
         qemu_args=_string_list(raw_profile, "qemu_args"),
         repro_env=_string_map(raw_profile, "repro_env"),
         execprog_args=_string_list(raw_profile, "execprog_args"),
+        repro_timeout=_positive_int(raw_profile, "repro_timeout", default=2 * 60),
         rootfs=_rootfs_profile(raw_profile),
+        target_crash=_target_crash_profile(raw_profile),
     )
 
 
@@ -87,11 +92,20 @@ def _string_map(raw: dict[str, Any], key: str) -> dict[str, str]:
 
 def _string_list(raw: dict[str, Any], key: str) -> list[str]:
     value = raw.get(key, [])
+    if isinstance(value, str):
+        return [value]
     if not isinstance(value, list):
-        raise RuntimeProfileError(f"runtime profile field '{key}' must be a list")
+        raise RuntimeProfileError(f"runtime profile field '{key}' must be a string or a list")
     if not all(isinstance(item, str) for item in value):
         raise RuntimeProfileError(f"runtime profile field '{key}' must contain only strings")
     return list(value)
+
+
+def _positive_int(raw: dict[str, Any], key: str, *, default: int) -> int:
+    value = raw.get(key, default)
+    if isinstance(value, bool) or not isinstance(value, int) or value < 1:
+        raise RuntimeProfileError(f"runtime profile field '{key}' must be a positive integer")
+    return value
 
 
 def _rootfs_profile(raw: dict[str, Any]) -> RootfsProfile | None:
@@ -124,6 +138,53 @@ def _rootfs_profile(raw: dict[str, Any]) -> RootfsProfile | None:
         interface=interface,
         root_device=root_device,
     )
+
+
+def _target_crash_profile(raw: dict[str, Any]) -> CrashTargetConfig | None:
+    value = raw.get("target_crash")
+    if value is None:
+        return None
+    if not isinstance(value, dict):
+        raise RuntimeProfileError("runtime profile field 'target_crash' must be an object")
+
+    allowed = {"report_types", "subtypes", "functions", "match"}
+    unknown = sorted(set(value) - allowed)
+    if unknown:
+        raise RuntimeProfileError(
+            "runtime profile field 'target_crash' contains unknown fields: " + ", ".join(unknown)
+        )
+
+    report_types = _required_string_list(value, "target_crash.report_types")
+    subtypes = _optional_string_list(value, "subtypes")
+    functions = _optional_string_list(value, "functions")
+    match = value.get("match", "any")
+    if match not in {"any", "all"}:
+        raise RuntimeProfileError("runtime profile field 'target_crash.match' must be 'any' or 'all'")
+    return CrashTargetConfig(
+        report_types=tuple(report_types),
+        subtypes=tuple(subtypes),
+        functions=tuple(functions),
+        match_all_functions=match == "all",
+    )
+
+
+def _required_string_list(raw: dict[str, Any], field: str) -> list[str]:
+    key = field.rsplit(".", 1)[-1]
+    value = raw.get(key)
+    if (
+        not isinstance(value, list)
+        or not value
+        or not all(isinstance(item, str) and item.strip() for item in value)
+    ):
+        raise RuntimeProfileError(f"runtime profile field '{field}' must be a non-empty string list")
+    return list(value)
+
+
+def _optional_string_list(raw: dict[str, Any], key: str) -> list[str]:
+    value = raw.get(key, [])
+    if not isinstance(value, list) or not all(isinstance(item, str) and item.strip() for item in value):
+        raise RuntimeProfileError(f"runtime profile field 'target_crash.{key}' must be a string list")
+    return list(value)
 
 
 def _required_nonempty_string(raw: dict[str, Any], field: str) -> str:
