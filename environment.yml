@@ -6,10 +6,10 @@ channels:
 
 dependencies:
   - "python=3.10.*=*_cpython"
+  - "go=1.27.2"
   - pip
   - curl
   - git
-  - go
   - openssh
   - patch
   - ripgrep
