@@ -38,8 +38,8 @@ for i in "${!cases[@]}"; do
         --work-dir work --timeout 30m \
         2>&1 | tee "$log_file"
 
-    # 只有指定 verdict 才算成功
-    if grep -Fq "verdict: reproduced (matched in attempt 1)" "$log_file"; then
+    # 仅完整的 verdict: reproduced 行算成功
+    if grep -Fxq 'verdict: reproduced' "$log_file"; then
         echo "SUCCESS: $id"
         ((success+=1))
     else

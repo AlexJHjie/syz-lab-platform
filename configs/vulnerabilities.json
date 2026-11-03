@@ -20,7 +20,8 @@
         "image": "cache/rootfs/rootfs-minimal/rootfs.img",
         "ssh_key": "cache/rootfs/rootfs-minimal/id_rsa"
       },
-      "qemu_args": [ "-smp", "4" ]
+      "qemu_args": [ "-smp", "4" ],
+      "execprog_args": [ "-threaded=0", "-collide=0", "-procs=8", "-repeat=0", "-sandbox=none" ]
     },
     "64bdf1f25f8db3d754e7b56c4d0f63a17edd8839": {
       "kernel-build-image": "syzrun-kernel-build:v1",
@@ -34,7 +35,7 @@
       "kernel-build-image": "syzrun-kernel-build:v1",
       "qemu_append": [ "systemd.unified_cgroup_hierarchy=0", "hung_task_panic=0" ],
       "execprog_args": [ "-threaded=0" ],
-      "repro_timeout": 600,
+      "repro_timeout": 180,
       "target_crash": {
         "report_types": [ "KASAN" ],
         "subtypes": [ "use-after-free" ],
@@ -182,7 +183,9 @@
       "qemu_append": "systemd.unified_cgroup_hierarchy=0"
     },
     "5d48b50ed679f22d7d4a4b578da8559d34b104ac": {
-      "qemu_append": "systemd.unified_cgroup_hierarchy=0"
+      "qemu_append": "systemd.unified_cgroup_hierarchy=0",
+      "qemu_args": [ "-smp", "4" ],
+      "execprog_args": [ "-threaded=0", "-enable=net_dev,close_fds" ]
     },
     "6922c8c31f1fdd120d1cef3f58b319b6dd1d8c00": {
       "qemu_append": "systemd.unified_cgroup_hierarchy=0"
@@ -195,7 +198,9 @@
       }
     },
     "6e96f5bd56bfecdaa0bfeaf2695a25cc80bfbd9a": {
-      "qemu_append": "systemd.unified_cgroup_hierarchy=0"
+      "qemu_append": "systemd.unified_cgroup_hierarchy=0",
+      "qemu_args": [ "-smp", "4" ],
+      "execprog_args": "-disable=close_fds"
     },
     "71f39cec3c870f687b26c5595d7a8608849f37ba": {
       "qemu_append": "systemd.unified_cgroup_hierarchy=0"
@@ -210,6 +215,9 @@
     },
     "9e18fe37d8af37d2b7da77206058aa78c2a1a9df": {
       "qemu_append": "nomodeset"
+    },
+    "9d6af32008ffd651175d152c5bea92cf767ae38c": {
+      "execprog_args": "-disable=all"
     },
     "b5d799a2cc619607ed6e322f97f78eaf534451e1": {
       "kernel-build-image": "syzrun-kernel-build:v1",
@@ -313,7 +321,8 @@
         "ssh_user": "root"
       },
       "qemu_append": [ "systemd.unified_cgroup_hierarchy=0", "panic_on_warn=1" ],
-      "execprog_args": [ "-disable=close_fds", "-disable=cgroups" ],
+      "qemu_args": [ "-device", "pci-testdev,addr=0x10" ],
+      "execprog_args": [ "-threaded=0", "-enable=devlink_pci" ],
       "target_crash": {
         "report_types": [ "WARNING" ],
         "functions": [ "restore_regulatory_settings" ]
@@ -323,18 +332,27 @@
       "kernel-build-image": "syzrun-kernel-build:v1",
       "make_args": [ "HOSTCFLAGS=-Wno-error", "WERROR=0" ]
     },
+    "39ab3e5efebf884fd72eef1df306285bffcdaa56": {
+      "qemu_args": [ "-m", "4096", "-smp", "4" ]
+    },
     "3dc1e16188e3fa22917a642188e4f08cbfc894a4": {
       "qemu_args": [ "-serial", "mon:stdio", "-serial", "null", "-serial", "null", "-serial", "null" ],
       "execprog_args": "-debug",
       "target_crash": {
-        "report_types": [ "KASAN", "OOPS" ],
+        "report_types": [ "KASAN", "OOPS", "BUG" ],
         "functions": [ "__wake_up_common", "add_wait_queue", "__add_wait_queue", "tty_release" ],
         "match": "any"
       }
     },
     "43332d148577054abb1088752ddad8730beee2f9": {
-      "qemu_args": [ "-cpu", "host", "-smp", "4" ],
-      "execprog_args": "-disable=close_fds",
+      "rootfs": {
+        "image": "cache/rootfs/rootfs-syzbot-stretch/rootfs.img",
+        "ssh_key": "cache/rootfs/rootfs-syzbot-stretch/id_rsa",
+        "ssh_user": "root"
+      },
+      "qemu_args": [ "-smp", "4" ],
+      "execprog_args": "-disable=all",
+      "repro_timeout": 180,
       "target_crash": {
         "report_types": [ "KASAN" ],
         "subtypes": [ "use-after-free" ],
@@ -350,6 +368,21 @@
       "execprog_args": [ "-disable=close_fds", "-procs=8", "-repeat=0" ],
       "qemu_args": [ "-smp", "1" ],
       "qemu_append": [ "sysctl.vm.dirty_writeback_centisecs=50", "sysctl.vm.dirty_expire_centisecs=50", "sysctl.vm.dirty_background_ratio=1" ]
+    },
+    "49b6f675bead6969f913a3f7dcef4d28fdd13296": {
+      "target_crash": {
+        "report_types": [ "BUG", "KASAN", "GPF" ],
+        "functions": [ "validate_mm", "mt_validate", "mt_validate_nulls" ],
+        "match": "any"
+      }
+    },
+    "4d35dd2768109c21f717806fb4274293758d65cf": {
+      "execprog_args": "-disable=close_fds",
+      "target_crash": {
+        "report_types": [ "KASAN", "BUG", "GPF" ],
+        "functions": [ "mt_validate_nulls", "validate_mm", "mt_validate" ],
+        "match": "any"
+      }
     },
     "4892aaa2ef26ab83c6b974f1db422f526f9aaec0": {
       "qemu_append": [ "systemd.unified_cgroup_hierarchy=0", "nomodeset" ],
@@ -368,7 +401,8 @@
       }
     },
     "4b5b6bdc090752dbcdd7e220a4703fed752cdfe7": {
-      "execprog_args": "-procs=8"
+      "execprog_args": [ "-procs=6", "-disable=all" ],
+      "repro_timeout": 180
     },
     "4e787d7ede986c6bdabd8a46e10dcee11b5768c7": {
       "execprog_args": "-disable=cgroups",
@@ -402,11 +436,19 @@
       "execprog_args": "-repeat=0"
     },
     "641c688b5c5a0c80d5d5832c5cd9f361c1cbb0a9": {
-      "execprog_args": "-procs=4"
+      "execprog_args": [ "-procs=4", "-disable=close_fds" ]
+    },
+    "66fe8eb71f455a245547576eb8d36fec957d2424": {
+      "qemu_args": [ "-smp", "4" ]
     },
     "724cf869d3bb512081588651530d8071a4b61ceb": {
+      "rootfs": {
+        "image": "cache/rootfs/rootfs-syzbot-stretch/rootfs.img",
+        "ssh_key": "cache/rootfs/rootfs-syzbot-stretch/id_rsa",
+        "ssh_user": "root"
+      },
       "qemu_args": [ "-smp", "4" ],
-      "execprog_args": "-disable=close_fds",
+      "execprog_args": "-enable=sysctl",
       "target_crash": {
         "report_types": [ "GPF" ],
         "functions": [ "start_transaction" ]
@@ -436,8 +478,8 @@
         "ssh_user": "root"
       },
       "qemu_append": [ "systemd.unified_cgroup_hierarchy=0", "panic_on_warn=1" ],
-      "qemu_args": [ "-smp", "8" ],
-      "execprog_args": "-disable=close_fds",
+      "qemu_args": [ "-smp", "2" ],
+      "execprog_args": [ "-disable=all" ],
       "target_crash": {
         "report_types": [ "WARNING" ],
         "functions": [ "__might_sleep", "io_sync_cancel" ]
@@ -449,8 +491,9 @@
         "ssh_key": "cache/rootfs/rootfs-syzbot-stretch/id_rsa",
         "ssh_user": "root"
       },
-      "qemu_append": [ "systemd.unified_cgroup_hierarchy=0", "panic_on_warn=1" ],
-      "qemu_args": [ "-cpu", "qemu64", "-smp", "8" ],
+      "qemu_append": [ "systemd.unified_cgroup_hierarchy=0", "panic_on_warn=0" ],
+      "qemu_args": [ "-cpu", "qemu64,+aes,+pclmulqdq", "-smp", "8" ],
+      "execprog_args": [ "-enable=tun,net_dev,net_reset,cgroups,binfmt_misc,close_fds" ],
       "target_crash": {
         "report_types": [ "WARNING" ],
         "functions": [ "tipc_l2_send_msg" ]
@@ -489,21 +532,48 @@
     "a59816f87c8e514d1b5ed891ae85341fbef1e553": {
       "qemu_args": [ "-m", "1024" ]
     },
+    "b5ecc684bb9e49db213e88f69d4ce80f7e20238d": {
+      "execprog_args": "-disable=close_fds",
+      "target_crash": {
+        "alternatives": [
+          {
+            "report_types": [ "WARNING" ],
+            "subtypes": [ "possible circular locking dependency detected; locks=['nci_mutex', '&ndev->req_lock']; states=[]" ],
+            "functions": [ "virtual_nci_close" ]
+          },
+          {
+            "report_types": [ "WARNING" ],
+            "subtypes": [ "possible circular locking dependency detected; locks=['&ndev->req_lock', '&genl_data->genl_data_mutex']; states=[]" ],
+            "functions": [ "nci_start_poll" ]
+          }
+        ]
+      }
+    },
+    "bf3e592d3ed61b8f86b8ffba072adcde5485a5f6": {
+      "target_crash": {
+        "report_types": [ "WARNING" ],
+        "functions": [ "kmem_cache_alloc" ]
+      }
+    },
     "cdaf5ed409125df023889aefe50b4cc4a41c0973": {
       "execprog_args": [ "-procs=16", "-repeat=0" ]
     },
     "d21cb12ee03822236d82ba4e83a1f8968e7832fb": {
       "rootfs": {
-        "image": "cache/rootfs/rootfs-minimal/rootfs.img",
-        "ssh_key": "cache/rootfs/rootfs-minimal/id_rsa",
+        "image": "cache/rootfs/rootfs-base/rootfs.img",
+        "ssh_key": "cache/rootfs/rootfs-base/id_rsa",
         "ssh_user": "root"
       },
-      "execprog_args": [ "-disable=close_fds", "-threaded=0", "-repeat=100" ],
+      "execprog_args": [ "-disable=close_fds", "-threaded=0", "-repeat=0" ],
       "target_crash": {
         "report_types": [ "KASAN" ],
         "subtypes": [ "null-ptr-deref" ],
         "functions": [ "filemap_fault" ]
       }
+    },
+    "d6fce0d2ff8fac6127ae3c5c9a8afa55fa30cf3a": {
+      "qemu_args": [ "-smp", "4" ],
+      "execprog_args": "-disable=cgroups"
     },
     "d905b9cf668a6fd23e8268008fff061b302d6fb5": {
       "rootfs": {
@@ -528,8 +598,12 @@
         "ssh_user": "root"
       }
     },
+    "f080ff8eb73ae6a29960594307de8e732db389d3": {
+      "execprog_args": "-disable=all"
+    },
     "f41839fbe9126fba553e1c791cd8c62584a2376f": {
-      "qemu_args": [ "-smp", "1" ]
+      "qemu_args": [ "-smp", "1" ],
+      "execprog_args": "-disable=all"
     }
   }
 }

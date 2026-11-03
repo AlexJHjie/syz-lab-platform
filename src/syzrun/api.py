@@ -165,9 +165,11 @@ def ensure_kernel_source(
 
 
 def _exit_code_for_verdict(status: str) -> int:
-    if status == "failed":
-        return 2
-    return 0 if status in {"reproduced", "crashed_other"} else 1
+    if status == "reproduced":
+        return 0
+    if status in {"not_reproduced", "crash_other"}:
+        return 1
+    return 2
 
 
 def _write_failure_report_if_possible(

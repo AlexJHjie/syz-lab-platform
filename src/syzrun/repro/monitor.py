@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import codecs
 import logging
+import shlex
 import time
 from dataclasses import dataclass, field, replace
 from tempfile import TemporaryDirectory
@@ -17,10 +18,8 @@ from .qemu import QemuVM
 from .rootfs import RootfsLocator
 from .symbolizer import symbolize_crash
 from .syz_execprog import SyzRunResult, start_syz_repro, stop_syz_repro
-from .verdict import CrashFingerprint, CrashReport, StreamMatcher, Verdict, classify, classify_text, split_reports, target_fingerprint
+from .verdict import CrashFingerprint, CrashReport, StreamMatcher, Verdict, classify, classify_text, same_crash_kind, split_reports, target_fingerprint
 
-ATTEMPT_COUNT = 3
-REPRO_TIMEOUT = 2 * 60
 MONITOR_INTERVAL = 0.5
 CRASH_DRAIN_IDLE_TIMEOUT = 2.0
 CRASH_DRAIN_MAX_WAIT = 10.0
@@ -88,10 +87,7 @@ class ReproductionRunner:
         fetched: FetchedArtifacts,
         timeout: int | None,
         runtime_profile: RuntimeProfile | None = None,
-        attempt_count: int = ATTEMPT_COUNT,
     ) -> None:
-        if attempt_count < 1:
-            raise ValueError("attempt_count must be at least 1")
         self.layout = layout
         self.vuln = vuln
         self.kernel = kernel
@@ -103,40 +99,28 @@ class ReproductionRunner:
             override=self.runtime_profile.target_crash,
         )
         self.timeout = timeout
-        self.attempt_count = attempt_count
 
     def run(self) -> ReproResult:
         rootfs = RootfsLocator(self.layout, self.runtime_profile).locate()
-        attempts: list[AttemptResult] = []
-        attempt_count = getattr(self, "attempt_count", ATTEMPT_COUNT)
-
-        for number in range(1, attempt_count + 1):
-            logs_dir = self.layout.logs_dir / f"attempt-{number:02d}"
-            started = time.monotonic()
-            logging.info("starting reproduction attempt %d/%d", number, attempt_count)
-            try:
-                result = self._run_attempt(number, logs_dir, rootfs)
-            except Exception as exc:
-                result = AttemptResult(
-                    number=number,
-                    status="failed",
-                    matched=None,
-                    reason="attempt infrastructure failure",
-                    duration_seconds=time.monotonic() - started,
-                    logs_dir=logs_dir,
-                    syz=None,
-                    error=str(exc),
-                    source_log=None,
-                )
-            result = self._finalize_attempt(result)
-            attempts.append(result)
-            logging.info("attempt %d finished: %s (%s)", number, result.status, result.reason)
-            if _should_stop_attempts(result.status):
-                break
-
-        verdict = _summarize_attempts(attempts)
-        syz = next((item.syz for item in reversed(attempts) if item.syz is not None), None)
-        return ReproResult(syz=syz, verdict=verdict, attempts=attempts)
+        logs_dir = self.layout.logs_dir / "attempt-01"
+        started = time.monotonic()
+        try:
+            result = self._run_attempt(logs_dir, rootfs)
+        except Exception as exc:
+            result = AttemptResult(
+                number=1,
+                status="failed",
+                matched=None,
+                reason="infrastructure failure",
+                duration_seconds=time.monotonic() - started,
+                logs_dir=logs_dir,
+                syz=None,
+                error=str(exc),
+            )
+        result = self._finalize_attempt(result)
+        logging.info("reproduction finished")
+        verdict = _single_attempt_verdict(result)
+        return ReproResult(syz=result.syz, verdict=verdict, attempts=[result])
 
     def _finalize_attempt(self, result: AttemptResult) -> AttemptResult:
         if result.status not in {"reproduced", "crashed_other"}:
@@ -149,7 +133,7 @@ class ReproductionRunner:
         # before deciding whether the target crash occurred.
         candidates = [
             (source, report) for source, report in reports
-            if _same_crash_kind(self.target, report.fingerprint)
+            if same_crash_kind(self.target, report.fingerprint)
         ]
         if reports[0] not in candidates:
             candidates.append(reports[0])  # Keep an artifact for an unrelated crash.
@@ -178,7 +162,6 @@ class ReproductionRunner:
                     verdict = classify_text(self.target, text, source_log=source)
                     if verdict.status == "reproduced":
                         crash_log.write_text(complete_report, encoding="utf-8")
-                        logging.info("symbolized crash log: %s", crash_log)
                         return replace(
                             result, status="reproduced", matched=verdict.matched,
                             reason="matched symbolized crash fingerprint",
@@ -192,7 +175,6 @@ class ReproductionRunner:
         if first_symbolized is not None:
             source, report = first_symbolized
             crash_log.write_text(report, encoding="utf-8")
-            logging.info("symbolized crash log: %s", crash_log)
             return replace(
                 result, status="crashed_other", matched=None,
                 reason="other kernel crash found after symbolization",
@@ -200,7 +182,7 @@ class ReproductionRunner:
             )
         return result  # Keep the raw verdict when symbolization is unavailable.
 
-    def _run_attempt(self, number: int, logs_dir: Path, rootfs) -> AttemptResult:
+    def _run_attempt(self, logs_dir: Path, rootfs) -> AttemptResult:
         vm = QemuVM(
             kernel=self.kernel,
             rootfs=rootfs,
@@ -214,6 +196,7 @@ class ReproductionRunner:
         try:
             vm.start()
             vm.wait_for_ssh()
+            _apply_guest_sysctls(vm, self.runtime_profile.guest_sysctls, logs_dir)
             qemu_offset = vm.qemu_log.stat().st_size if vm.qemu_log.exists() else 0
             repro_log = logs_dir / "repro.log"
             repro_offset = repro_log.stat().st_size if repro_log.exists() else 0
@@ -241,10 +224,10 @@ class ReproductionRunner:
                     ):
                         exit_code = stop_syz_repro(process)
                         _drain_qemu_log_after_crash(vm.qemu_log, start_offset=qemu_offset)
-                        verdict = classify(
-                            self.target, logs_dir, offsets
+                        verdict = classify(self.target, logs_dir, offsets)
+                        return _attempt_result(
+                            verdict, started, logs_dir, exit_code, remote_command, offsets
                         )
-                        return _attempt_result(number, verdict, started, logs_dir, exit_code, remote_command, offsets)
 
                 repro_text = repro_scanner.read_text()
                 if repro_text is not None:
@@ -253,21 +236,25 @@ class ReproductionRunner:
                     # Stop early only after the complete target signature is available.
                     if verdict.status == "reproduced":
                         exit_code = stop_syz_repro(process)
-                        verdict = classify(
-                            self.target, logs_dir, offsets
+                        verdict = classify(self.target, logs_dir, offsets)
+                        return _attempt_result(
+                            verdict, started, logs_dir, exit_code, remote_command, offsets
                         )
-                        return _attempt_result(number, verdict, started, logs_dir, exit_code, remote_command, offsets)
 
                 returncode = process.poll()
                 if returncode is not None:
                     verdict = classify(self.target, logs_dir, offsets)
                     verdict = _verdict_after_repro_exit(verdict, returncode)
-                    return _attempt_result(number, verdict, started, logs_dir, returncode, remote_command, offsets)
+                    return _attempt_result(
+                        verdict, started, logs_dir, returncode, remote_command, offsets
+                    )
 
                 if vm.process and vm.process.poll() is not None:
                     verdict = classify(self.target, logs_dir, offsets)
                     verdict = _verdict_after_vm_exit(verdict)
-                    return _attempt_result(number, verdict, started, logs_dir, process.poll(), remote_command, offsets)
+                    return _attempt_result(
+                        verdict, started, logs_dir, process.poll(), remote_command, offsets
+                    )
                 time.sleep(MONITOR_INTERVAL)
 
             exit_code = stop_syz_repro(process)
@@ -276,14 +263,32 @@ class ReproductionRunner:
                 verdict = Verdict(
                     "not_reproduced",
                     None,
-                    f"repro timed out after {self.runtime_profile.repro_timeout}s (exit code {exit_code})",
+                    f"syz-execprog timed out after {self.runtime_profile.repro_timeout}s",
                     verdict.source_log,
                 )
-            return _attempt_result(number, verdict, started, logs_dir, exit_code, remote_command, offsets)
+            return _attempt_result(
+                verdict, started, logs_dir, exit_code, remote_command, offsets
+            )
         finally:
             if process is not None and process.poll() is None:
                 stop_syz_repro(process)
             vm.stop()
+
+
+def _apply_guest_sysctls(vm: QemuVM, settings: dict[str, str], logs_dir: Path) -> None:
+    if not settings:
+        return
+    writes = [
+        f"printf '%s\\n' {shlex.quote(value)} > {shlex.quote('/proc/sys/' + name.replace('.', '/'))}"
+        for name, value in settings.items()
+    ]
+    exit_code = vm.ssh(
+        "set -e; " + "; ".join(writes),
+        timeout=60,
+        log_path=logs_dir / "guest-setup.log",
+    )
+    if exit_code != 0:
+        raise RuntimeError(f"guest sysctl setup failed with exit code {exit_code}")
 
 
 def _read_from(path: Path, offset: int) -> str:
@@ -344,7 +349,6 @@ def _drain_qemu_log_after_crash(
 
 
 def _attempt_result(
-    number: int,
     verdict: Verdict,
     started: float,
     logs_dir: Path,
@@ -353,7 +357,7 @@ def _attempt_result(
     log_offsets: dict[str, int],
 ) -> AttemptResult:
     return AttemptResult(
-        number=number,
+        number=1,
         status=verdict.status,
         matched=verdict.matched,
         reason=verdict.reason,
@@ -366,7 +370,60 @@ def _attempt_result(
     )
 
 
-def _verdict_after_repro_exit(verdict: Verdict, exit_code: int) -> Verdict:
+def _single_attempt_verdict(result: AttemptResult) -> Verdict:
+    """Map the only execution's diagnostic to the public verdict vocabulary."""
+
+    if result.status == "reproduced":
+        return Verdict("reproduced", result.matched, "target crash reproduced", result.source_log)
+
+    if result.status == "not_reproduced":
+        # Older attempt artifacts can still carry the former detailed timeout
+        # text. Normalize it so callers always see one of the two supported
+        # not-reproduced reasons.
+        for timeout_prefix in ("syz-execprog timed out after ", "repro timed out after "):
+            if result.reason.startswith(timeout_prefix):
+                timeout = result.reason[len(timeout_prefix) :].split("s", 1)[0]
+                return Verdict(
+                    "not_reproduced",
+                    None,
+                    f"syz-execprog timed out after {timeout}s",
+                    result.source_log,
+                )
+        return Verdict(
+            "not_reproduced",
+            None,
+            "no kernel crash report found",
+            result.source_log,
+        )
+
+    if result.status == "crashed_other":
+        reason = (
+            "other kernel crash found after symbolization"
+            if result.reason == "other kernel crash found after symbolization"
+            else "other kernel crash found"
+        )
+        return Verdict("crash_other", None, reason, result.source_log)
+
+    error_reasons = {
+        "infrastructure failure",
+        "syz repro exited unexpectedly with code",
+        "VM exited unexpectedly during reproduction",
+    }
+    if result.reason.startswith("syz repro exited unexpectedly with code"):
+        reason = result.reason
+    elif result.reason in error_reasons:
+        reason = result.reason
+    else:
+        # Keep the top-level vocabulary stable. The unabridged exception is
+        # retained in AttemptResult.error and the attempt report.
+        reason = "infrastructure failure"
+    return Verdict("error", None, reason, result.source_log)
+
+
+def _verdict_after_repro_exit(
+    verdict: Verdict,
+    exit_code: int,
+) -> Verdict:
     """Preserve crash verdicts, but reject an otherwise unexplained repro failure."""
 
     if verdict.status != "not_reproduced" or exit_code in NORMAL_REPRO_EXIT_CODES:
@@ -377,18 +434,12 @@ def _verdict_after_repro_exit(verdict: Verdict, exit_code: int) -> Verdict:
         f"syz repro exited unexpectedly with code {exit_code}",
         verdict.source_log,
     )
-
-
 def _verdict_after_vm_exit(verdict: Verdict) -> Verdict:
     """An early VM exit without a kernel crash is an infrastructure failure."""
 
     if verdict.status != "not_reproduced":
         return verdict
     return Verdict("failed", None, "VM exited unexpectedly during reproduction", verdict.source_log)
-
-
-def _should_stop_attempts(status: str) -> bool:
-    return status in {"reproduced", "failed"}
 
 
 def _reports_from_attempt(result: AttemptResult) -> list[tuple[str, CrashReport]]:
@@ -406,37 +457,3 @@ def _reports_from_attempt(result: AttemptResult) -> list[tuple[str, CrashReport]
             for report in split_reports(result.report)
         )
     return reports
-
-
-def _same_crash_kind(target: CrashFingerprint, observed: CrashFingerprint) -> bool:
-    accepted_types = target.accepted_report_types or (target.report_type,)
-    if observed.report_type not in accepted_types:
-        return False
-    if target.accepted_subtypes:
-        return observed.subtype in target.accepted_subtypes
-    return not target.subtype or not observed.subtype or target.subtype == observed.subtype
-
-
-def _summarize_attempts(attempts: list[AttemptResult]) -> Verdict:
-    reproduced = next((item for item in attempts if item.status == "reproduced"), None)
-    if reproduced:
-        return Verdict(
-            "reproduced",
-            reproduced.matched,
-            f"matched in attempt {reproduced.number}",
-            reproduced.source_log,
-        )
-
-    crashed = next((item for item in attempts if item.status == "crashed_other"), None)
-    if crashed:
-        return Verdict(
-            "crashed_other",
-            crashed.matched,
-            "other kernel crash found across attempts",
-            crashed.source_log,
-        )
-
-    if any(item.status == "not_reproduced" for item in attempts):
-        return Verdict("not_reproduced", None, "target crash not found in any attempt")
-
-    return Verdict("failed", None, "all reproduction attempts failed")

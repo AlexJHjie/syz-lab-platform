@@ -13,16 +13,25 @@ class CrashFingerprint:
     accepted_report_types: tuple[str, ...] = ()
     accepted_subtypes: tuple[str, ...] = ()
     match_all_functions: bool = False
+    # A configured target can be a disjunction of fully independent
+    # fingerprints.  The ordinary fields retain the first rule for callers
+    # that only need a representative fingerprint; matching always examines
+    # every alternative when this tuple is populated.
+    alternatives: tuple["CrashFingerprint", ...] = ()
 
 
 @dataclass(frozen=True)
 class CrashTargetConfig:
     """Optional per-case crash selection rules from vulnerabilities.json."""
 
-    report_types: tuple[str, ...]
+    report_types: tuple[str, ...] = ()
     subtypes: tuple[str, ...] = ()
     functions: tuple[str, ...] = ()
     match_all_functions: bool = False
+    # ``alternatives`` is an OR of complete rules.  It deliberately does not
+    # merge their report types, subtypes, or functions: doing so would create
+    # false type/function cross-products.
+    alternatives: tuple["CrashTargetConfig", ...] = ()
 
 
 @dataclass(frozen=True)
@@ -240,16 +249,28 @@ def fingerprint(text: str, kind: str) -> CrashFingerprint:
 
 def target_fingerprint(path: Path, override: CrashTargetConfig | None = None) -> CrashFingerprint:
     if override is not None:
-        if not override.report_types:
-            raise ValueError("target crash configuration must contain at least one report type")
-        return CrashFingerprint(
-            report_type=override.report_types[0],
-            subtype=override.subtypes[0] if len(override.subtypes) == 1 else None,
-            functions=override.functions,
-            accepted_report_types=override.report_types,
-            accepted_subtypes=override.subtypes,
-            match_all_functions=override.match_all_functions,
-        )
+        if override.alternatives:
+            if (
+                override.report_types
+                or override.subtypes
+                or override.functions
+                or override.match_all_functions
+            ):
+                raise ValueError("target crash alternatives cannot be combined with a direct target rule")
+            alternatives = tuple(_configured_fingerprint(rule) for rule in override.alternatives)
+            if not alternatives:
+                raise ValueError("target crash alternatives must contain at least one rule")
+            first = alternatives[0]
+            return CrashFingerprint(
+                report_type=first.report_type,
+                subtype=first.subtype,
+                functions=first.functions,
+                accepted_report_types=first.accepted_report_types,
+                accepted_subtypes=first.accepted_subtypes,
+                match_all_functions=first.match_all_functions,
+                alternatives=alternatives,
+            )
+        return _configured_fingerprint(override)
 
     stream = ReportStream()
     with path.open("rb") as source:
@@ -262,6 +283,21 @@ def target_fingerprint(path: Path, override: CrashTargetConfig | None = None) ->
     if target:
         return target
     raise ValueError(f"target crash report has no usable fingerprint: {path}")
+
+
+def _configured_fingerprint(config: CrashTargetConfig) -> CrashFingerprint:
+    if config.alternatives:
+        raise ValueError("target crash alternatives must contain direct rules only")
+    if not config.report_types:
+        raise ValueError("target crash configuration must contain at least one report type")
+    return CrashFingerprint(
+        report_type=config.report_types[0],
+        subtype=config.subtypes[0] if len(config.subtypes) == 1 else None,
+        functions=config.functions,
+        accepted_report_types=config.report_types,
+        accepted_subtypes=config.subtypes,
+        match_all_functions=config.match_all_functions,
+    )
 
 
 def classify(target: CrashFingerprint, logs_dir: Path, offsets: dict[str, int] | None = None) -> Verdict:
@@ -291,6 +327,12 @@ def classify_path(
 
 
 def _matching_functions(target: CrashFingerprint, observed: CrashFingerprint) -> list[str]:
+    if target.alternatives:
+        for alternative in target.alternatives:
+            common = _matching_functions(alternative, observed)
+            if common:
+                return common
+        return []
     accepted_types = target.accepted_report_types or (target.report_type,)
     if observed.report_type not in accepted_types:
         return []
@@ -311,3 +353,16 @@ def _matching_functions(target: CrashFingerprint, observed: CrashFingerprint) ->
     if target.match_all_functions and len(common) != len(target.functions):
         return []
     return common
+
+
+def same_crash_kind(target: CrashFingerprint, observed: CrashFingerprint) -> bool:
+    """Whether an observed report is compatible enough to symbolize for target."""
+
+    if target.alternatives:
+        return any(same_crash_kind(alternative, observed) for alternative in target.alternatives)
+    accepted_types = target.accepted_report_types or (target.report_type,)
+    if observed.report_type not in accepted_types:
+        return False
+    if target.accepted_subtypes:
+        return observed.subtype in target.accepted_subtypes
+    return not target.subtype or not observed.subtype or target.subtype == observed.subtype

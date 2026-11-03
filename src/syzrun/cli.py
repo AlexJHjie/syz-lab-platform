@@ -54,9 +54,10 @@ def run_command(args: argparse.Namespace) -> int:
 
 
 def _print_success(verdict: Verdict, json_report: Path | None, md_report: Path | None) -> None:
-    print(f"verdict: {verdict.status} ({verdict.reason})")
-    if verdict.matched:
-        print(f"matched: {verdict.matched}")
+    if verdict.status == "reproduced":
+        print("verdict: reproduced")
+    else:
+        print(f"verdict: {verdict.status} ({verdict.reason})")
     print(f"report: {json_report}")
     print(f"summary: {md_report}")
 

@@ -2,7 +2,7 @@
 
 `syzrun` 是面向 Ubuntu 的 Linux 内核漏洞复现工具。它读取单个 syzbot 风格的漏洞元数据，自动下载复现材料、构建指定版本的 Linux 与 syzkaller、启动 QEMU 执行 reproducer，并输出 JSON 和 Markdown 报告。
 
-当前支持 `amd64`/`x86_64` 和 syz reproducer。每个漏洞最多尝试 3 次；元数据内的补丁不会自动应用，验证补丁时必须显式传入 `--patch`。
+当前支持 `amd64`/`x86_64` 和 syz reproducer。每个漏洞只执行一次复现，不会重试；结果以 `reproduced`、`not_reproduced`、`crash_other` 或 `error` verdict 输出。元数据内的补丁不会自动应用，验证补丁时必须显式传入 `--patch`。
 
 ## 环境要求
 
@@ -113,15 +113,6 @@ syzrun run /path/to/vulnerability.json \
 每个 case 结束后（包括失败或 Ctrl+C 中断），自动删除 `work/runs/<id>/kernel/` 和
 `work/runs/<id>/syzkaller/`，保留输入、日志、报告及共享缓存。再次执行该 case 时会重新构建。
 
-假设漏洞 ID 为 `<id>`：
-
-```bash
-cat work/runs/<id>/report.md
-cat work/runs/<id>/report.json
-less work/runs/<id>/logs/kernel-build.log
-less work/runs/<id>/logs/attempt-01/qemu.log
-```
-
 主要目录如下：
 
 ```text
@@ -135,7 +126,7 @@ work/
     ├── input/              # 元数据、配置、reproducer、补丁
     ├── kernel/linux/       # Linux 工作树
     ├── syzkaller/src/      # syzkaller 工作树
-    ├── logs/               # 构建日志及 attempt-01..03
+    ├── logs/               # 构建日志
     ├── report.json
     └── report.md
 ```
@@ -147,27 +138,11 @@ work/
 | 结果 | 退出码 | 含义 |
 | --- | ---: | --- |
 | `reproduced` | `0` | 捕获到与目标指纹匹配的崩溃 |
-| `crashed_other` | `0` | 内核崩溃，但与目标漏洞不匹配 |
-| `not_reproduced` | `1` | 所有尝试均未复现目标漏洞 |
-| `failed` | `2` | 元数据、下载、构建或运行失败 |
+| `not_reproduced` | `1` | 唯一一次复现未发现内核崩溃，或 `syz-execprog` 超时 |
+| `crash_other` | `1` | 发现内核崩溃，但原始或符号化后的指纹不匹配目标 |
+| `error` | `2` | 复现基础设施或执行过程发生异常 |
 
-执行失败时生成 `work/runs/<id>/failure.json`。诊断时优先查看同目录下的 `logs/`。
-
-## 运行配置
-
-常用环境变量：
-
-| 变量 | 默认值 | 作用 |
-| --- | --- | --- |
-| `PLATFORM_QEMU_MEM` | `2048` | QEMU 内存，单位 MB |
-| `PLATFORM_QEMU_SMP` | `2` | QEMU vCPU 数量 |
-| `PLATFORM_DISABLE_KVM` | 未设置 | 设置后禁用 KVM |
-| `PLATFORM_LINUX_REPO` | Linux 官方仓库 | 覆盖 Linux mirror 地址 |
-| `PLATFORM_SYZKALLER_REPO` | syzkaller 官方仓库 | 覆盖 syzkaller mirror 地址 |
-| `PLATFORM_SYZBOT_BASE_URL` | `https://syzkaller.appspot.com` | 解析 syzbot 相对链接 |
-| `PLATFORM_REFRESH_REPOS` | 未设置 | 设为 `1` 时刷新 Git mirror |
-| `PLATFORM_GIT_RETRIES` | `3` | Git 网络操作重试次数 |
-| `PLATFORM_SYMBOLIZER_TIMEOUT` | `300` | 符号化超时，单位秒 |
+终端只有完整行 `verdict: reproduced` 表示成功。`not_reproduced`、`crash_other` 和 `error` 都表示此次复现未成功；诊断时优先查看同目录下的 `logs/`。元数据、下载、构建或启动阶段发生异常时还会生成 `work/runs/<id>/failure.json`。
 
 ## Python API
 

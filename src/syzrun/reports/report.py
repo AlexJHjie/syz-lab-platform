@@ -102,7 +102,7 @@ def _render_markdown(report: RunReport) -> str:
     ]
     if report.syz_command:
         lines.extend(["", "## syz command", "", f"```sh\n{report.syz_command}\n```"])
-    lines.extend(["", "## attempts", ""])
+    lines.extend(["", "## attempt", ""])
     for attempt in report.attempts:
         lines.append(
             f"- attempt {attempt['number']}: `{attempt['status']}` "

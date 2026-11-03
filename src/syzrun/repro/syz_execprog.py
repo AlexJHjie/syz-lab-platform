@@ -127,7 +127,13 @@ def start_syz_repro(
     vm.scp_to(syzkaller.execprog, "/root/syz-execprog")
     vm.scp_to(syzkaller.executor, "/root/syz-executor")
     vm.scp_to(repro_file, "/root/repro.syz")
-    vm.ssh("chmod +x /root/syz-execprog /root/syz-executor", timeout=60, log_path=vm.logs_dir / "repro.log")
+    exit_code = vm.ssh(
+        "chmod +x /root/syz-execprog /root/syz-executor",
+        timeout=60,
+        log_path=vm.logs_dir / "repro.log",
+    )
+    if exit_code != 0:
+        raise RuntimeError(f"failed to prepare syz reproducer (exit code {exit_code})")
 
     flags = merge_execprog_flags(build_execprog_flags(repro_file), extra_args or [])
     command_parts = ["timeout", f"{timeout}s"]
@@ -140,7 +146,9 @@ def start_syz_repro(
     return process, remote_command
 
 
-def stop_syz_repro(process: subprocess.Popen[str]) -> int | None:
+def stop_syz_repro(
+    process: subprocess.Popen[str],
+) -> int | None:
     if process.poll() is not None:
         return process.returncode
     try:

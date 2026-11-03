@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import re
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
@@ -9,6 +10,7 @@ from .metadata import Vulnerability
 from .repro.verdict import CrashTargetConfig
 
 DEFAULT_RUNTIME_PROFILES = Path(__file__).resolve().parents[2] / "configs" / "vulnerabilities.json"
+_GUEST_SYSCTL_NAME = re.compile(r"^[A-Za-z0-9_]+(?:\.[A-Za-z0-9_]+)+$")
 
 
 class RuntimeProfileError(ValueError):
@@ -32,6 +34,7 @@ class RuntimeProfile:
     qemu_append: list[str] = field(default_factory=list)
     qemu_args: list[str] = field(default_factory=list)
     repro_env: dict[str, str] = field(default_factory=dict)
+    guest_sysctls: dict[str, str] = field(default_factory=dict)
     execprog_args: list[str] = field(default_factory=list)
     rootfs: RootfsProfile | None = None
     repro_timeout: int = 2 * 60
@@ -64,6 +67,10 @@ def load_runtime_profile(vuln: Vulnerability, config_path: Path = DEFAULT_RUNTIM
     if not isinstance(raw_profile, dict):
         raise RuntimeProfileError(f"runtime profile for {vuln.vuln_id} must be an object")
 
+    if "repro_batch_timeout" in raw_profile:
+        raise RuntimeProfileError("runtime profile field 'repro_batch_timeout' is no longer supported")
+    repro_timeout = _positive_int(raw_profile, "repro_timeout", default=2 * 60)
+
     return RuntimeProfile(
         kernel_build_image=_optional_nonempty_string(raw_profile, "kernel-build-image"),
         build_env=_string_map(raw_profile, "build_env"),
@@ -71,8 +78,9 @@ def load_runtime_profile(vuln: Vulnerability, config_path: Path = DEFAULT_RUNTIM
         qemu_append=_string_list(raw_profile, "qemu_append"),
         qemu_args=_string_list(raw_profile, "qemu_args"),
         repro_env=_string_map(raw_profile, "repro_env"),
+        guest_sysctls=_guest_sysctl_map(raw_profile),
         execprog_args=_string_list(raw_profile, "execprog_args"),
-        repro_timeout=_positive_int(raw_profile, "repro_timeout", default=2 * 60),
+        repro_timeout=repro_timeout,
         rootfs=_rootfs_profile(raw_profile),
         target_crash=_target_crash_profile(raw_profile),
     )
@@ -87,6 +95,20 @@ def _string_map(raw: dict[str, Any], key: str) -> dict[str, str]:
         if not isinstance(item_key, str) or not isinstance(item_value, str):
             raise RuntimeProfileError(f"runtime profile field '{key}' must contain string keys and values")
         result[item_key] = item_value
+    return result
+
+
+def _guest_sysctl_map(raw: dict[str, Any]) -> dict[str, str]:
+    value = raw.get("guest_sysctls", {})
+    if not isinstance(value, dict):
+        raise RuntimeProfileError("runtime profile field 'guest_sysctls' must be an object")
+    result: dict[str, str] = {}
+    for name, setting in value.items():
+        if not isinstance(name, str) or not _GUEST_SYSCTL_NAME.fullmatch(name):
+            raise RuntimeProfileError("runtime profile field 'guest_sysctls' contains an invalid sysctl name")
+        if not isinstance(setting, str) or not setting.strip() or "\n" in setting or "\r" in setting:
+            raise RuntimeProfileError("runtime profile field 'guest_sysctls' must contain non-empty one-line string values")
+        result[name] = setting
     return result
 
 
@@ -147,19 +169,50 @@ def _target_crash_profile(raw: dict[str, Any]) -> CrashTargetConfig | None:
     if not isinstance(value, dict):
         raise RuntimeProfileError("runtime profile field 'target_crash' must be an object")
 
-    allowed = {"report_types", "subtypes", "functions", "match"}
+    allowed = {"report_types", "subtypes", "functions", "match", "alternatives"}
     unknown = sorted(set(value) - allowed)
     if unknown:
         raise RuntimeProfileError(
             "runtime profile field 'target_crash' contains unknown fields: " + ", ".join(unknown)
         )
 
-    report_types = _required_string_list(value, "target_crash.report_types")
-    subtypes = _optional_string_list(value, "subtypes")
-    functions = _optional_string_list(value, "functions")
+    if "alternatives" not in value:
+        return _target_crash_rule(value, "target_crash")
+
+    direct_fields = sorted(set(value) - {"alternatives"})
+    if direct_fields:
+        raise RuntimeProfileError(
+            "runtime profile field 'target_crash.alternatives' cannot be combined with direct fields: "
+            + ", ".join(direct_fields)
+        )
+    alternatives = value["alternatives"]
+    if not isinstance(alternatives, list) or not alternatives:
+        raise RuntimeProfileError("runtime profile field 'target_crash.alternatives' must be a non-empty list")
+    return CrashTargetConfig(
+        alternatives=tuple(
+            _target_crash_rule(rule, f"target_crash.alternatives[{index}]")
+            for index, rule in enumerate(alternatives)
+        )
+    )
+
+
+def _target_crash_rule(value: Any, field: str) -> CrashTargetConfig:
+    if not isinstance(value, dict):
+        raise RuntimeProfileError(f"runtime profile field '{field}' must be an object")
+
+    allowed = {"report_types", "subtypes", "functions", "match"}
+    unknown = sorted(set(value) - allowed)
+    if unknown:
+        raise RuntimeProfileError(
+            f"runtime profile field '{field}' contains unknown fields: " + ", ".join(unknown)
+        )
+
+    report_types = _required_string_list(value, f"{field}.report_types")
+    subtypes = _optional_string_list(value, "subtypes", field=field)
+    functions = _optional_string_list(value, "functions", field=field)
     match = value.get("match", "any")
     if match not in {"any", "all"}:
-        raise RuntimeProfileError("runtime profile field 'target_crash.match' must be 'any' or 'all'")
+        raise RuntimeProfileError(f"runtime profile field '{field}.match' must be 'any' or 'all'")
     return CrashTargetConfig(
         report_types=tuple(report_types),
         subtypes=tuple(subtypes),
@@ -180,10 +233,10 @@ def _required_string_list(raw: dict[str, Any], field: str) -> list[str]:
     return list(value)
 
 
-def _optional_string_list(raw: dict[str, Any], key: str) -> list[str]:
+def _optional_string_list(raw: dict[str, Any], key: str, *, field: str = "target_crash") -> list[str]:
     value = raw.get(key, [])
     if not isinstance(value, list) or not all(isinstance(item, str) and item.strip() for item in value):
-        raise RuntimeProfileError(f"runtime profile field 'target_crash.{key}' must be a string list")
+        raise RuntimeProfileError(f"runtime profile field '{field}.{key}' must be a string list")
     return list(value)
 
 
