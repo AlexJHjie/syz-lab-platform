@@ -439,7 +439,19 @@
       "execprog_args": [ "-procs=4", "-disable=close_fds" ]
     },
     "66fe8eb71f455a245547576eb8d36fec957d2424": {
-      "qemu_args": [ "-smp", "4" ]
+      "qemu_args": [ "-smp", "4" ],
+      "target_crash": {
+        "report_types": [ "MEMORY_LEAK" ],
+        "functions": [
+          "usb_alloc_dev",
+          "hub_port_connect",
+          "hub_port_connect_change",
+          "port_event",
+          "hub_event",
+          "usb_set_configuration"
+        ],
+        "match": "any"
+      }
     },
     "724cf869d3bb512081588651530d8071a4b61ceb": {
       "rootfs": {
