@@ -6,4 +6,7 @@ work/*
 toolchains/
 
 .env
+.agents
+.codex
+.aws
 tests/
